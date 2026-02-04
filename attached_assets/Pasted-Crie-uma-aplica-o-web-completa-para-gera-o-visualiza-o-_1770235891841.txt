@@ -1,0 +1,137 @@
+Crie uma aplicação web completa para geração, visualização, armazenamento e impressão de recibos escolares do Colégio Rhulany. O sistema será usado pela secretaria e deve ser simples, rápido e fácil de utilizar.
+
+🏫 Objetivo do Sistema
+
+Permitir que a secretaria emita recibos de pagamento para alunos da 1ª até a 6ª classe, com layout profissional e pronto para impressão.
+
+⚙️ Tecnologias Sugeridas
+
+Pode usar uma stack simples e moderna:
+
+Frontend: React ou HTML + CSS + Bootstrap
+
+Backend: Node.js com Express
+
+Banco de dados: SQLite ou JSON
+
+Geração de PDF: Biblioteca web apropriada
+
+📄 Estrutura do Recibo
+
+O formato da página deve ser A4
+
+Cada página deve conter 2 recibos
+
+Um recibo deve aparecer na parte superior e outro na parte inferior
+
+O layout deve permitir corte ao meio após impressão
+
+🧾 Informações Fixas do Recibo
+
+Cada recibo deve conter:
+
+Nome da instituição: Colégio Rhulany
+
+Nome da Chefe da Secretaria (deve ser configurável no sistema)
+
+Número do recibo (gerado automaticamente e sequencial)
+
+Data de emissão automática
+
+Espaço para assinatura da Chefe da Secretaria
+
+Espaço para carimbo da escola
+
+👨‍🎓 Dados Variáveis do Aluno
+
+O sistema deve permitir inserir:
+
+Nome do aluno
+
+Classe (Selecionar apenas entre 1ª, 2ª, 3ª, 4ª, 5ª e 6ª classe)
+
+Número do aluno (opcional)
+
+Nome do encarregado (opcional)
+
+Descrição do pagamento (exemplo: Propina, Matrícula, Uniforme, Material escolar, Outro)
+
+Valor pago
+
+Valor por extenso em Meticais (gerado automaticamente)
+
+Forma de pagamento:
+
+Dinheiro
+
+M-Pesa
+
+e-Mola
+
+Transferência bancária
+
+🖨️ Funcionalidades Obrigatórias
+
+O sistema deve permitir:
+
+Criar novos recibos
+
+Visualizar recibos antes de imprimir
+
+Gerar recibos em PDF
+
+Imprimir recibos
+
+Armazenar recibos no banco de dados
+
+Listar recibos já emitidos
+
+Pesquisar recibos por:
+
+Nome do aluno
+
+Número do recibo
+
+Data
+
+🎨 Interface do Usuário
+
+A interface deve conter:
+
+Formulário para inserção dos dados do recibo
+
+Pré-visualização do recibo em tempo real
+
+Botões para:
+
+Salvar recibo
+
+Gerar PDF
+
+Imprimir recibo
+
+Layout moderno, simples e responsivo
+
+📑 Organização do Projeto
+
+Estruture o projeto em:
+
+Frontend (Interface do usuário e pré-visualização)
+
+Backend (Lógica do sistema e API)
+
+Banco de dados (Armazenamento dos recibos)
+
+Sistema de geração de PDF
+
+Configuração para impressão em formato A4 com dois recibos por página
+
+⭐ Requisitos Extras
+
+O número do recibo deve ser gerado automaticamente e não pode repetir
+
+O sistema deve permitir configurar o nome da Chefe da Secretaria nas definições
+
+O recibo deve ter aparência profissional semelhante a recibos escolares reais
+
+O sistema deve funcionar bem tanto em computador quanto em tablet
