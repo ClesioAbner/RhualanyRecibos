@@ -42,18 +42,21 @@ function ReceiptBlock({
       data-testid={`${testIdPrefix}-block`}
     >
       <div className="flex items-start justify-between gap-6">
-        <div>
-          <div className="text-[12px] uppercase tracking-[0.22em] text-neutral-600">
-            Colégio Rhulany
-          </div>
-          <div className="mt-1 font-[600] text-xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
-            Recibo de Pagamento
-          </div>
-          <div className="mt-2 text-[13px] text-neutral-600">
-            Chefe da Secretaria:{" "}
-            <span className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-secretary`}>
-              {secretaryName}
-            </span>
+        <div className="flex items-start gap-4">
+          <img src="/images/logo.png" alt="Logo Colégio Rhulany" className="h-16 w-16 object-contain" />
+          <div>
+            <div className="text-[12px] uppercase tracking-[0.22em] text-neutral-600">
+              Colégio Rhulany
+            </div>
+            <div className="mt-1 font-[600] text-xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
+              Recibo de Pagamento
+            </div>
+            <div className="mt-2 text-[13px] text-neutral-600">
+              Chefe da Secretaria:{" "}
+              <span className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-secretary`}>
+                {secretaryName}
+              </span>
+            </div>
           </div>
         </div>
 

@@ -121,8 +121,14 @@ export async function registerRoutes(
       .strokeColor("#000")
       .stroke();
 
-    doc.fontSize(16).font("Helvetica-Bold").text("Colégio Rhulany", marginX + 12, y + 12);
-    doc.fontSize(12).font("Helvetica").text("RECIBO", marginX + 12, y + 34);
+    try {
+      doc.image("client/public/images/logo.png", marginX + 12, y + 12, { width: 50 });
+    } catch (e) {
+      // ignore if logo missing
+    }
+
+    doc.fontSize(16).font("Helvetica-Bold").text("Colégio Rhulany", marginX + 70, y + 12);
+    doc.fontSize(12).font("Helvetica").text("RECIBO", marginX + 70, y + 34);
 
     doc
       .fontSize(10)
