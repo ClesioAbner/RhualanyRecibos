@@ -193,11 +193,16 @@ export async function registerRoutes(
     doc.on("data", (c: Buffer) => chunks.push(c));
 
     const perPage = 2;
-    for (let i = 0; i < list.length; i += perPage) {
+    for (let i = 0; i < list.length; i++) {
+      const receiptData = list[i];
+      
+      // Page 1 has 2 identical copies
       if (i > 0) doc.addPage();
-      const pageReceipts = list.slice(i, i + perPage);
-
-      receiptBlock(doc, pageReceipts[0], 40);
+      
+      // Top Copy
+      receiptBlock(doc, receiptData, 40);
+      
+      // Cut line
       doc
         .dash(4, { space: 4 })
         .moveTo(40, 420)
@@ -205,9 +210,9 @@ export async function registerRoutes(
         .strokeColor("#555")
         .stroke()
         .undash();
-      if (pageReceipts[1]) {
-        receiptBlock(doc, pageReceipts[1], 460);
-      }
+        
+      // Bottom Copy (identical)
+      receiptBlock(doc, receiptData, 460);
     }
 
     doc.end();

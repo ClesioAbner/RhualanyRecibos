@@ -35,126 +35,167 @@ function ReceiptBlock({
     <section
       className={cn(
         "rounded-2xl border border-border/70 bg-white text-black",
-        "shadow-[0_18px_50px_-35px_rgba(0,0,0,0.45)]",
-        "p-6",
+        "shadow-card overflow-hidden",
+        "p-6 relative",
         className,
       )}
       data-testid={`${testIdPrefix}-block`}
     >
-      <div className="flex items-start justify-between gap-6">
+      {/* Decorative background element */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-10 -mt-10" />
+
+      <div className="flex items-start justify-between gap-6 relative z-10">
         <div className="flex items-start gap-4">
-          <img src="/images/logo.png" alt="Logo Colégio Rhulany" className="h-16 w-16 object-contain" />
-          <div>
-            <div className="text-[12px] uppercase tracking-[0.22em] text-neutral-600">
+          <div className="p-2 bg-neutral-50 rounded-xl border border-neutral-100 shadow-sm">
+            <img src="/images/logo.png" alt="Logo Colégio Rhulany" className="h-16 w-16 object-contain" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-[13px] font-bold uppercase tracking-[0.25em] text-primary">
               Colégio Rhulany
             </div>
-            <div className="text-[10px] italic text-neutral-500 tracking-wide">
+            <div className="text-[10px] italic text-neutral-500 tracking-widest uppercase">
               Qualidade e Excelência
             </div>
-            <div className="mt-1 font-[600] text-xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
-              Recibo de Pagamento
-            </div>
-            <div className="mt-2 text-[13px] text-neutral-600">
-              Emitido por:{" "}
-              <span className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-secretary`}>
-                {secretaryName}
+            <h1 className="mt-2 font-bold text-2xl tracking-tight text-neutral-900 leading-none">
+              Recibo
+            </h1>
+            <div className="mt-3 text-[13px] text-neutral-600 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+              <span>
+                Emitido por:{" "}
+                <span className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-secretary`}>
+                  {secretaryName}
+                </span>
               </span>
             </div>
           </div>
         </div>
 
         <div className="text-right">
-          <div className="inline-flex flex-col items-end rounded-xl border border-neutral-200 px-4 py-3 bg-neutral-50">
-            <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-600">
-              Nº do Recibo
+          <div className="inline-flex flex-col items-end rounded-2xl border-2 border-primary/10 px-5 py-3 bg-primary/[0.02]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">
+              Nº DOCUMENTO
             </div>
-            <div className="text-2xl font-bold tabular-nums" data-testid={`${testIdPrefix}-receiptNumber`}>
-              {receiptNumber}
+            <div className="text-3xl font-black text-primary tabular-nums tracking-tighter" data-testid={`${testIdPrefix}-receiptNumber`}>
+              #{receiptNumber.toString().padStart(4, '0')}
             </div>
           </div>
-          <div className="mt-2 text-[12px] text-neutral-600">
-            Data:{" "}
-            <span className="font-semibold text-neutral-900 tabular-nums" data-testid={`${testIdPrefix}-issueDate`}>
+          <div className="mt-3 flex items-center justify-end gap-2 text-[12px] font-medium text-neutral-500 uppercase tracking-wider">
+            <span>Data de Emissão</span>
+            <span className="text-neutral-900 font-bold tabular-nums" data-testid={`${testIdPrefix}-issueDate`}>
               {issueDate}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-neutral-200 p-4">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-600">Aluno</div>
-          <div className="mt-1 font-semibold text-neutral-950" data-testid={`${testIdPrefix}-studentName`}>
-            {receipt.studentName ?? "—"}
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-3 text-[13px] text-neutral-700">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Classe</div>
-              <div className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-studentClass`}>
-                {receipt.studentClass ?? "—"}
-              </div>
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-4 bg-primary rounded-full" />
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-500">Identificação do Aluno</div>
             </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Nº Aluno</div>
-              <div className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-studentNumber`}>
-                {receipt.studentNumber ?? "—"}
+            <div className="space-y-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Nome Completo</div>
+                <div className="text-base font-bold text-neutral-900" data-testid={`${testIdPrefix}-studentName`}>
+                  {receipt.studentName ?? "—"}
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Encarregado</div>
-            <div className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-guardianName`}>
-              {receipt.guardianName ?? "—"}
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Classe</div>
+                  <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-studentClass`}>
+                    {receipt.studentClass ?? "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Nº Interno</div>
+                  <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-studentNumber`}>
+                    {receipt.studentNumber ?? "—"}
+                  </div>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-neutral-100">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Encarregado de Educação</div>
+                <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-guardianName`}>
+                  {receipt.guardianName ?? "—"}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 p-4">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-600">Pagamento</div>
-          <div className="mt-1 font-semibold text-neutral-950" data-testid={`${testIdPrefix}-paymentDescription`}>
-            {receipt.paymentDescription ?? "—"}
-          </div>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-4 bg-accent rounded-full" />
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-500">Detalhes do Pagamento</div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Descrição</div>
+                <div className="text-base font-bold text-neutral-900 leading-tight" data-testid={`${testIdPrefix}-paymentDescription`}>
+                  {receipt.paymentDescription ?? "—"}
+                </div>
+              </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3 text-[13px] text-neutral-700">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Forma</div>
-              <div className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-paymentMethod`}>
-                {receipt.paymentMethod ?? "—"}
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Método</div>
+                  <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-paymentMethod`}>
+                    {receipt.paymentMethod ?? "—"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Total Pago</div>
+                  <div className="text-xl font-black text-neutral-900 tabular-nums" data-testid={`${testIdPrefix}-amountPaid`}>
+                    {fmtMoney((receipt as any).amountPaid)} MT
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500">Subtotal</div>
-              <div className="text-sm text-neutral-700 tabular-nums">
-                {fmtMoney(Number((receipt as any).amountPaid || 0) - Number((receipt as any).ivaAmount || 0))} MT
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 mt-1">IVA (5%)</div>
-              <div className="text-sm text-neutral-700 tabular-nums">
-                {fmtMoney(Number((receipt as any).ivaAmount || 0))} MT
-              </div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mt-2">Total</div>
-              <div className="font-bold text-neutral-900 tabular-nums text-lg" data-testid={`${testIdPrefix}-amountPaid`}>
-                {fmtMoney((receipt as any).amountPaid)} MT
-              </div>
-            </div>
           </div>
 
-          <div className="mt-3 rounded-lg bg-neutral-50 border border-neutral-200 p-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Por extenso</div>
-            <div className="mt-1 text-[13px] leading-relaxed text-neutral-800" data-testid={`${testIdPrefix}-amountInWords`}>
-              {receipt.amountInWords ?? "—"}
+          <div className="rounded-2xl border-2 border-dashed border-neutral-100 p-4 bg-neutral-50/30">
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center text-[12px]">
+                <span className="text-neutral-500 font-medium">Subtotal</span>
+                <span className="text-neutral-700 font-bold tabular-nums">
+                  {fmtMoney(Number((receipt as any).amountPaid || 0) - Number((receipt as any).ivaAmount || 0))} MT
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[12px]">
+                <span className="text-neutral-500 font-medium">IVA (5%)</span>
+                <span className="text-accent font-bold tabular-nums">
+                  {fmtMoney(Number((receipt as any).ivaAmount || 0))} MT
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-neutral-200 p-4">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-600">Carimbo</div>
-          <div className="mt-3 h-20 rounded-lg border border-dashed border-neutral-300 grid place-items-center text-[12px] text-neutral-500">
-            Área do carimbo
+      <div className="mt-6 p-4 rounded-2xl bg-primary/[0.03] border border-primary/5 italic text-[13px] text-neutral-700 leading-relaxed relative z-10">
+        <span className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-1 not-italic">Valor por extenso</span>
+        "{receipt.amountInWords ?? "—"}"
+      </div>
+
+      <div className="mt-8 flex items-end justify-between gap-6 relative z-10">
+        <div className="flex-1 max-w-[200px]">
+          <div className="h-24 rounded-2xl border-2 border-dashed border-neutral-200 grid place-items-center relative group">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-300 group-hover:text-neutral-400 transition-colors">Carimbo Oficial</div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.02)_100%)]" />
           </div>
         </div>
+        <div className="text-right space-y-1">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Autenticação</div>
+          <div className="text-[11px] font-medium text-neutral-500 italic">Documento processado por computador</div>
+          <div className="text-[11px] font-bold text-primary tabular-nums">Ref: RH-{receiptNumber.toString().padStart(6, '0')}</div>
+        </div>
       </div>
+    </section>
 
       <div className="mt-5 flex items-center justify-between text-[12px] text-neutral-500">
         <div>Documento interno — uso escolar</div>
