@@ -21,6 +21,7 @@ export const receipts = pgTable("receipts", {
   paymentDescription: text("payment_description").notNull(),
   paymentMethod: varchar("payment_method", { length: 32 }).notNull(),
   amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull(),
+  ivaAmount: numeric("iva_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   amountInWords: text("amount_in_words").notNull(),
 });
 

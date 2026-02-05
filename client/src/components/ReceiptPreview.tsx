@@ -48,11 +48,14 @@ function ReceiptBlock({
             <div className="text-[12px] uppercase tracking-[0.22em] text-neutral-600">
               Colégio Rhulany
             </div>
+            <div className="text-[10px] italic text-neutral-500 tracking-wide">
+              Qualidade e Excelência
+            </div>
             <div className="mt-1 font-[600] text-xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
               Recibo de Pagamento
             </div>
             <div className="mt-2 text-[13px] text-neutral-600">
-              Chefe da Secretaria:{" "}
+              Emitido por:{" "}
               <span className="font-semibold text-neutral-900" data-testid={`${testIdPrefix}-secretary`}>
                 {secretaryName}
               </span>
@@ -120,7 +123,15 @@ function ReceiptBlock({
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Valor</div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500">Subtotal</div>
+              <div className="text-sm text-neutral-700 tabular-nums">
+                {fmtMoney(Number((receipt as any).amountPaid || 0) - Number((receipt as any).ivaAmount || 0))} MT
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 mt-1">IVA (5%)</div>
+              <div className="text-sm text-neutral-700 tabular-nums">
+                {fmtMoney(Number((receipt as any).ivaAmount || 0))} MT
+              </div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mt-2">Total</div>
               <div className="font-bold text-neutral-900 tabular-nums text-lg" data-testid={`${testIdPrefix}-amountPaid`}>
                 {fmtMoney((receipt as any).amountPaid)} MT
               </div>
@@ -137,12 +148,6 @@ function ReceiptBlock({
       </div>
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-neutral-200 p-4">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-600">Assinatura</div>
-          <div className="mt-10 border-t border-neutral-300 pt-2 text-[12px] text-neutral-600">
-            Chefe da Secretaria
-          </div>
-        </div>
         <div className="rounded-xl border border-neutral-200 p-4">
           <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-600">Carimbo</div>
           <div className="mt-3 h-20 rounded-lg border border-dashed border-neutral-300 grid place-items-center text-[12px] text-neutral-500">

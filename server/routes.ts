@@ -128,7 +128,8 @@ export async function registerRoutes(
     }
 
     doc.fontSize(16).font("Helvetica-Bold").text("Colégio Rhulany", marginX + 70, y + 12);
-    doc.fontSize(12).font("Helvetica").text("RECIBO", marginX + 70, y + 34);
+    doc.fontSize(10).font("Helvetica-Oblique").text("Qualidade e Excelência", marginX + 70, y + 28);
+    doc.fontSize(12).font("Helvetica").text("RECIBO", marginX + 70, y + 42);
 
     doc
       .fontSize(10)
@@ -136,7 +137,7 @@ export async function registerRoutes(
       .text(`Recibo Nº: ${r.receiptNumber}`, marginX + 360, y + 18, { align: "left" })
       .text(`Data: ${r.issueDate}`, marginX + 360, y + 34, { align: "left" });
 
-    const leftY = y + 70;
+    const leftY = y + 75;
     doc.fontSize(11).font("Helvetica-Bold").text("Dados do Aluno", marginX + 12, leftY);
     doc.fontSize(10).font("Helvetica");
     doc.text(`Nome: ${r.studentName}`, marginX + 12, leftY + 18);
@@ -149,25 +150,24 @@ export async function registerRoutes(
     doc.fontSize(10).font("Helvetica");
     doc.text(`Descrição: ${r.paymentDescription}`, marginX + 12, payY + 18);
     doc.text(`Forma: ${r.paymentMethod}`, marginX + 12, payY + 34);
+    
+    const amountVal = Number(r.amountPaid);
+    const ivaVal = Number(r.ivaAmount || 0);
+    const subtotal = amountVal - ivaVal;
+
+    doc.fontSize(10).font("Helvetica").text(`Subtotal: ${formatMoneyMt(subtotal)}`, marginX + 360, payY + 18);
+    doc.text(`IVA (5%): ${formatMoneyMt(ivaVal)}`, marginX + 360, payY + 32);
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
-      .text(`Valor: ${formatMoneyMt(Number(r.amountPaid))}`, marginX + 360, payY + 18);
+      .text(`Total: ${formatMoneyMt(amountVal)}`, marginX + 360, payY + 50);
+
     doc
       .fontSize(9)
       .font("Helvetica")
-      .text(`Por extenso: ${r.amountInWords}`, marginX + 12, payY + 56, { width: width - 24 });
+      .text(`Por extenso: ${r.amountInWords}`, marginX + 12, payY + 65, { width: width - 24 });
 
     const sigY = y + height - 85;
-    doc
-      .fontSize(10)
-      .font("Helvetica")
-      .text("Assinatura da Chefe da Secretaria:", marginX + 12, sigY);
-    doc
-      .moveTo(marginX + 12, sigY + 22)
-      .lineTo(marginX + 250, sigY + 22)
-      .strokeColor("#000")
-      .stroke();
     doc
       .fontSize(10)
       .text("Carimbo:", marginX + 320, sigY);
@@ -178,7 +178,7 @@ export async function registerRoutes(
 
     doc
       .fontSize(10)
-      .text(`Chefe da Secretaria: ${r.secretaryName}`, marginX + 12, y + height - 30);
+      .text(`Emitido por: ${r.secretaryName}`, marginX + 12, y + height - 30);
   }
 
   async function buildPdfForReceipts(receiptIds: number[]) {
@@ -261,12 +261,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Defina o nome da Chefe da Secretaria nas definições" });
       }
       const amountPaid = Number(input.amountPaid);
+      const ivaAmount = amountPaid * 0.05;
       const amountInWords = amountToWordsMt(amountPaid);
 
       const created = await storage.createReceipt({
         ...input,
         secretaryName: s.secretaryName,
         amountPaid: amountPaid as any,
+        ivaAmount: ivaAmount as any,
         amountInWords,
       } as any);
       res.status(201).json(created);
