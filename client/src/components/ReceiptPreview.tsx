@@ -196,12 +196,6 @@ function ReceiptBlock({
         </div>
       </div>
     </section>
-
-      <div className="mt-5 flex items-center justify-between text-[12px] text-neutral-500">
-        <div>Documento interno — uso escolar</div>
-        <div className="tabular-nums">Ref: RH-{receiptNumber}</div>
-      </div>
-    </section>
   );
 }
 
