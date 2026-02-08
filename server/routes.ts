@@ -115,11 +115,11 @@ export async function registerRoutes(
     const marginX = 40;
     const width = 515;
     const height = 360;
-    doc
-      .rect(marginX, y, width, height)
-      .lineWidth(1)
-      .strokeColor("#000")
-      .stroke();
+
+    // Contact Info Header
+    doc.fontSize(8).font("Helvetica").text("Av. Acordos de Luska i nº 82", marginX + 70, y + 42);
+    doc.text("Cell: 846116719/ 826116720", marginX + 70, y + 52);
+    doc.text("Nuit: 121815559", marginX + 70, y + 62);
 
     try {
       doc.image("client/public/images/logo.png", marginX + 12, y + 12, { width: 50 });
@@ -128,8 +128,7 @@ export async function registerRoutes(
     }
 
     doc.fontSize(16).font("Helvetica-Bold").text("Colégio Rhulany", marginX + 70, y + 12);
-    doc.fontSize(10).font("Helvetica-Oblique").text("Qualidade e Excelência", marginX + 70, y + 28);
-    doc.fontSize(12).font("Helvetica").text("RECIBO", marginX + 70, y + 42);
+    doc.fontSize(12).font("Helvetica-Bold").text("RECIBO", marginX + 70, y + 28);
 
     doc
       .fontSize(10)
@@ -137,7 +136,7 @@ export async function registerRoutes(
       .text(`Recibo Nº: ${r.receiptNumber}`, marginX + 360, y + 18, { align: "left" })
       .text(`Data: ${r.issueDate}`, marginX + 360, y + 34, { align: "left" });
 
-    const leftY = y + 75;
+    const leftY = y + 85;
     doc.fontSize(11).font("Helvetica-Bold").text("Dados do Aluno", marginX + 12, leftY);
     doc.fontSize(10).font("Helvetica");
     doc.text(`Nome: ${r.studentName}`, marginX + 12, leftY + 18);
@@ -171,14 +170,13 @@ export async function registerRoutes(
     doc
       .fontSize(10)
       .text("Carimbo:", marginX + 320, sigY);
-    doc
-      .rect(marginX + 320, sigY + 16, 200, 45)
-      .strokeColor("#000")
-      .stroke();
+    // Remove rect for stamp
 
     doc
       .fontSize(10)
-      .text(`Emitido por: ${r.secretaryName}`, marginX + 12, y + height - 30);
+      .text(`Emitido por: ${r.secretaryName}`, marginX + 12, y + height - 45);
+
+    doc.fontSize(10).font("Helvetica-Oblique").text("Educação com qualidade e excelência", marginX, y + height - 20, { align: "center", width });
   }
 
   async function buildPdfForReceipts(receiptIds: number[]) {

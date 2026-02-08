@@ -53,8 +53,10 @@ function ReceiptBlock({
             <div className="text-[13px] font-bold uppercase tracking-[0.25em] text-primary">
               Colégio Rhulany
             </div>
-            <div className="text-[10px] italic text-neutral-500 tracking-widest uppercase">
-              Qualidade e Excelência
+            <div className="text-[9px] text-neutral-500 font-medium">
+              Av. Acordos de Luska i nº 82<br />
+              Cell: 846116719/ 826116720<br />
+              Nuit: 121815559
             </div>
             <h1 className="mt-2 font-bold text-2xl tracking-tight text-neutral-900 leading-none">
               Recibo
@@ -184,18 +186,22 @@ function ReceiptBlock({
 
       <div className="mt-8 flex items-end justify-between gap-6 relative z-10">
         <div className="flex-1 max-w-[200px]">
-          <div className="h-24 rounded-2xl border-2 border-dashed border-neutral-200 grid place-items-center relative group">
+          <div className="h-24 rounded-2xl border border-neutral-200 grid place-items-center relative group overflow-hidden">
             <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-300 group-hover:text-neutral-400 transition-colors">Carimbo Oficial</div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.02)_100%)]" />
           </div>
         </div>
         <div className="text-right space-y-1">
+          <div className="text-[10px] italic text-neutral-500 tracking-widest uppercase mb-3">
+            Educação com qualidade e excelência
+          </div>
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Autenticação</div>
           <div className="text-[11px] font-medium text-neutral-500 italic">Documento processado por computador</div>
           <div className="text-[11px] font-bold text-primary tabular-nums">Ref: RH-{receiptNumber.toString().padStart(6, '0')}</div>
         </div>
       </div>
     </section>
+  );
+}
   );
 }
 
