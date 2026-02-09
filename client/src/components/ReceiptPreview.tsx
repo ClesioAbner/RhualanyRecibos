@@ -202,8 +202,6 @@ function ReceiptBlock({
     </section>
   );
 }
-  );
-}
 
 export default function ReceiptPreview({
   receipt,
