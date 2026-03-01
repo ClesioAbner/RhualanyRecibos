@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 function fmtMoney(v: unknown) {
   const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "0,00";
   return n.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -18,237 +18,272 @@ export type ReceiptPreviewModel = Partial<Receipt> & {
   secretaryName?: string;
 };
 
+/* ─────────────────────────────────────────
+   RECEIPT BLOCK
+───────────────────────────────────────── */
 function ReceiptBlock({
   receipt,
-  className,
+  copy,
   testIdPrefix,
 }: {
   receipt: ReceiptPreviewModel;
-  className?: string;
+  copy: "original" | "duplicado";
   testIdPrefix: string;
 }) {
-  const receiptNumber = receipt.receiptNumber ?? "—";
-  const issueDate = fmtDate((receipt as any).issueDate);
-  const secretaryName = receipt.secretaryName ?? "—";
+  const num         = receipt.receiptNumber ?? "—";
+  const numFmt      = typeof num === "number" ? num.toString().padStart(4, "0") : num;
+  const issueDate   = fmtDate((receipt as any).issueDate);
+  const secretary   = receipt.secretaryName ?? "—";
+  const amount      = Number((receipt as any).amountPaid) || 0;
 
   return (
-    <section
-      className={cn(
-        "rounded-2xl border border-border/70 bg-white text-black",
-        "shadow-card overflow-hidden",
-        "p-6 relative",
-        className,
-      )}
+    <div
+      className="bg-white text-black font-sans"
+      style={{ fontFamily: "'Segoe UI', Arial, sans-serif", fontSize: "11px" }}
       data-testid={`${testIdPrefix}-block`}
     >
-      {/* Decorative background element */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-10 -mt-10" />
+      {/* ── TOP STRIPE ── */}
+      <div style={{ background: "#1a3a6b", height: "6px" }} />
 
-      <div className="flex items-start justify-between gap-6 relative z-10">
-        <div className="flex items-start gap-4">
-          <div className="p-2 bg-neutral-50 rounded-xl border border-neutral-100 shadow-sm">
-            <img src="/images/logo.png" alt="Logo Colégio Rhulany" className="h-16 w-16 object-contain" />
+      {/* ── HEADER ── */}
+      <div className="px-6 pt-4 pb-3" style={{ borderBottom: "1px solid #dde3ec" }}>
+        <div className="flex items-start justify-between">
+
+          {/* logo + name */}
+          <div className="flex items-center gap-3">
+            <img
+              src="/colegio.png"
+              alt="Colégio Rhulany"
+              style={{ height: 52, width: 52, objectFit: "contain" }}
+            />
+            <div>
+              <div style={{ fontSize: "17px", fontWeight: 800, color: "#1a3a6b", letterSpacing: "-0.3px" }}>
+                Colégio Rhulany
+              </div>
+              <div style={{ fontSize: "9.5px", color: "#5a7aa8", fontStyle: "italic", marginTop: "1px" }}>
+                Educação com qualidade e excelência
+              </div>
+              <div style={{ fontSize: "9px", color: "#888", marginTop: "3px" }}>
+                Av. Acordos de Lusaka i nº 1251 &nbsp;·&nbsp; NUIT: 121815559
+              </div>
+            </div>
           </div>
-          <div className="space-y-0.5">
-            <div className="text-[13px] font-bold uppercase tracking-[0.25em] text-primary">
-              Colégio Rhulany
+
+          {/* right block */}
+          <div className="text-right">
+            <div style={{
+              background: "#1a3a6b", color: "white",
+              padding: "3px 12px", borderRadius: "4px",
+              fontSize: "13px", fontWeight: 800, letterSpacing: "3px",
+              marginBottom: "6px",
+            }}>
+              RECIBO
             </div>
-            <div className="text-[9px] text-neutral-500 font-medium">
-              Av. Acordos de Luska i nº 82<br />
-              Cell: 846116719/ 826116720<br />
-              Nuit: 121815559
+            <div style={{ fontSize: "9px", color: "#888" }}>
+              Cell: 826 116 720 / 848 067 954
             </div>
-            <h1 className="mt-2 font-bold text-2xl tracking-tight text-neutral-900 leading-none">
-              Recibo
-            </h1>
-            <div className="mt-3 text-[13px] text-neutral-600 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-              <span>
-                Emitido por:{" "}
-                <span className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-secretary`}>
-                  {secretaryName}
-                </span>
+            <div style={{ fontSize: "9px", color: "#888", marginTop: "2px" }}>
+              <span style={{
+                background: copy === "original" ? "#1a3a6b" : "#e8f0fb",
+                color: copy === "original" ? "white" : "#1a3a6b",
+                padding: "1px 8px", borderRadius: "20px",
+                fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "1px",
+              }}>
+                {copy}
               </span>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="text-right">
-          <div className="inline-flex flex-col items-end rounded-2xl border-2 border-primary/10 px-5 py-3 bg-primary/[0.02]">
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">
-              Nº DOCUMENTO
+      {/* ── DOC INFO BAR ── */}
+      <div style={{ background: "#f2f5fb", borderBottom: "1px solid #dde3ec" }}
+           className="px-6 py-2 flex justify-between items-center">
+        <div style={{ fontSize: "10px" }}>
+          <span style={{ color: "#666" }}>Nº Documento: </span>
+          <span style={{ fontWeight: 700, color: "#1a3a6b" }} data-testid={`${testIdPrefix}-receiptNumber`}>
+            RH-{numFmt}
+          </span>
+        </div>
+        <div style={{ fontSize: "10px" }}>
+          <span style={{ color: "#666" }}>Data de Emissão: </span>
+          <span style={{ fontWeight: 700 }} data-testid={`${testIdPrefix}-issueDate`}>{issueDate}</span>
+        </div>
+      </div>
+
+      {/* ── BODY ── */}
+      <div className="px-6 py-3 space-y-3">
+
+        {/* ALUNO */}
+        <div>
+          <div style={{
+            background: "#1a3a6b", color: "white",
+            fontSize: "8.5px", fontWeight: 700, letterSpacing: "1.5px",
+            padding: "3px 8px", marginBottom: "6px",
+            textTransform: "uppercase",
+          }}>
+            Identificação do Aluno
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10.5px" }}>
+            <tbody>
+              {[
+                ["Nome Completo",           receipt.studentName    ?? "—", `${testIdPrefix}-studentName`],
+                ["Classe",                  receipt.studentClass   ?? "—", `${testIdPrefix}-studentClass`],
+                ["Nº Interno",              receipt.studentNumber  || "—", `${testIdPrefix}-studentNumber`],
+                ["Encarregado de Educação", receipt.guardianName   || "—", `${testIdPrefix}-guardianName`],
+              ].map(([label, value, tid]) => (
+                <tr key={label} style={{ borderBottom: "1px dotted #e5e9f0" }}>
+                  <td style={{ padding: "3px 0", color: "#555", width: "42%" }}>{label}:</td>
+                  <td style={{ padding: "3px 0", fontWeight: 600, color: "#111" }} data-testid={tid}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* PAGAMENTO */}
+        <div>
+          <div style={{
+            background: "#1a3a6b", color: "white",
+            fontSize: "8.5px", fontWeight: 700, letterSpacing: "1.5px",
+            padding: "3px 8px", marginBottom: "6px",
+            textTransform: "uppercase",
+          }}>
+            Detalhes do Pagamento
+          </div>
+
+          {/* description + amount row */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            background: "#f7f9fd", border: "1px solid #dde3ec",
+            borderRadius: "4px", padding: "6px 10px", marginBottom: "6px",
+          }}>
+            <div>
+              <div style={{ fontSize: "9px", color: "#666", textTransform: "uppercase", letterSpacing: "0.8px" }}>Descrição</div>
+              <div style={{ fontWeight: 700, fontSize: "12px", color: "#1a3a6b", marginTop: "1px" }}
+                   data-testid={`${testIdPrefix}-paymentDescription`}>
+                {receipt.paymentDescription ?? "—"}
+              </div>
             </div>
-            <div className="text-3xl font-black text-primary tabular-nums tracking-tighter" data-testid={`${testIdPrefix}-receiptNumber`}>
-              #{receiptNumber.toString().padStart(4, '0')}
+            <div className="text-right">
+              <div style={{ fontSize: "9px", color: "#666", textTransform: "uppercase", letterSpacing: "0.8px" }}>Valor Pago</div>
+              <div style={{ fontWeight: 800, fontSize: "18px", color: "#1a3a6b", letterSpacing: "-0.5px", marginTop: "1px" }}
+                   data-testid={`${testIdPrefix}-amountPaid`}>
+                {fmtMoney(amount)} <span style={{ fontSize: "11px", fontWeight: 600 }}>MT</span>
+              </div>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-end gap-2 text-[12px] font-medium text-neutral-500 uppercase tracking-wider">
-            <span>Data de Emissão</span>
-            <span className="text-neutral-900 font-bold tabular-nums" data-testid={`${testIdPrefix}-issueDate`}>
-              {issueDate}
-            </span>
+
+          {/* método + extenso */}
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10.5px" }}>
+            <tbody>
+              <tr style={{ borderBottom: "1px dotted #e5e9f0" }}>
+                <td style={{ padding: "3px 0", color: "#555", width: "42%" }}>Forma de Pagamento:</td>
+                <td style={{ padding: "3px 0", fontWeight: 600 }} data-testid={`${testIdPrefix}-paymentMethod`}>
+                  {receipt.paymentMethod ?? "—"}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "4px 0", color: "#555", verticalAlign: "top" }}>Valor por Extenso:</td>
+                <td style={{ padding: "4px 0", fontStyle: "italic", color: "#333", fontWeight: 500 }}>
+                  {receipt.amountInWords ?? "—"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* TOTAL BOX */}
+        <div style={{
+          background: "#1a3a6b", color: "white",
+          borderRadius: "4px", padding: "6px 10px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span style={{ fontWeight: 700, fontSize: "10px", letterSpacing: "0.5px" }}>TOTAL PAGO</span>
+          <span style={{ fontWeight: 800, fontSize: "15px", letterSpacing: "-0.3px" }}>
+            {fmtMoney(amount)} MT
+          </span>
+        </div>
+
+        {/* FOOTER: assinaturas */}
+        <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px", gap: "16px" }}>
+          {/* stamp */}
+          <div style={{
+            border: "1px solid #dde3ec", borderRadius: "4px",
+            padding: "8px 16px", textAlign: "center", minWidth: "90px",
+          }}>
+            <div style={{ fontSize: "8.5px", color: "#aaa", marginBottom: "18px" }}>Carimbo Oficial</div>
+            <div style={{ fontSize: "8px", color: "#ccc", fontStyle: "italic" }}>Assinatura</div>
+          </div>
+
+          {/* secretary */}
+          <div style={{ textAlign: "right", flex: 1 }}>
+            <div style={{ borderTop: "1px solid #333", paddingTop: "4px", display: "inline-block", minWidth: "160px" }}>
+              <div style={{ fontSize: "9.5px", fontWeight: 600 }}>{secretary}</div>
+              <div style={{ fontSize: "8.5px", color: "#666" }}>Chefe da Secretaria</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ref */}
+        <div style={{ textAlign: "center", paddingTop: "4px" }}>
+          <div style={{ fontSize: "8px", color: "#aaa" }}>
+            Documento processado por computador &nbsp;·&nbsp; Ref: RH-{numFmt}
           </div>
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 bg-primary rounded-full" />
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-500">Identificação do Aluno</div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Nome Completo</div>
-                <div className="text-base font-bold text-neutral-900" data-testid={`${testIdPrefix}-studentName`}>
-                  {receipt.studentName ?? "—"}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Classe</div>
-                  <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-studentClass`}>
-                    {receipt.studentClass ?? "—"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Nº Interno</div>
-                  <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-studentNumber`}>
-                    {receipt.studentNumber ?? "—"}
-                  </div>
-                </div>
-              </div>
-              <div className="pt-2 border-t border-neutral-100">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Encarregado de Educação</div>
-                <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-guardianName`}>
-                  {receipt.guardianName ?? "—"}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 bg-accent rounded-full" />
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-500">Detalhes do Pagamento</div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Descrição</div>
-                <div className="text-base font-bold text-neutral-900 leading-tight" data-testid={`${testIdPrefix}-paymentDescription`}>
-                  {receipt.paymentDescription ?? "—"}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Método</div>
-                  <div className="font-bold text-neutral-900" data-testid={`${testIdPrefix}-paymentMethod`}>
-                    {receipt.paymentMethod ?? "—"}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Total Pago</div>
-                  <div className="text-xl font-black text-neutral-900 tabular-nums" data-testid={`${testIdPrefix}-amountPaid`}>
-                    {fmtMoney((receipt as any).amountPaid)} MT
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border-2 border-dashed border-neutral-100 p-4 bg-neutral-50/30">
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center text-[12px]">
-                <span className="text-neutral-500 font-medium">Subtotal</span>
-                <span className="text-neutral-700 font-bold tabular-nums">
-                  {fmtMoney(Number((receipt as any).amountPaid || 0) - Number((receipt as any).ivaAmount || 0))} MT
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-[12px]">
-                <span className="text-neutral-500 font-medium">IVA (5%)</span>
-                <span className="text-accent font-bold tabular-nums">
-                  {fmtMoney(Number((receipt as any).ivaAmount || 0))} MT
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 p-4 rounded-2xl bg-primary/[0.03] border border-primary/5 italic text-[13px] text-neutral-700 leading-relaxed relative z-10">
-        <span className="text-[10px] font-black uppercase tracking-widest text-primary/40 block mb-1 not-italic">Valor por extenso</span>
-        "{receipt.amountInWords ?? "—"}"
-      </div>
-
-      <div className="mt-8 flex items-end justify-between gap-6 relative z-10">
-        <div className="flex-1 max-w-[200px]">
-          <div className="h-24 rounded-2xl border border-neutral-200 grid place-items-center relative group overflow-hidden">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-300 group-hover:text-neutral-400 transition-colors">Carimbo Oficial</div>
-          </div>
-        </div>
-        <div className="text-right space-y-1">
-          <div className="text-[10px] italic text-neutral-500 tracking-widest uppercase mb-3">
-            Educação com qualidade e excelência
-          </div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Autenticação</div>
-          <div className="text-[11px] font-medium text-neutral-500 italic">Documento processado por computador</div>
-          <div className="text-[11px] font-bold text-primary tabular-nums">Ref: RH-{receiptNumber.toString().padStart(6, '0')}</div>
-        </div>
-      </div>
-    </section>
+      {/* ── BOTTOM STRIPE ── */}
+      <div style={{ background: "#1a3a6b", height: "4px" }} />
+    </div>
   );
 }
 
+/* ─────────────────────────────────────────
+   EXPORT
+───────────────────────────────────────── */
 export default function ReceiptPreview({
   receipt,
   mode = "screen",
   testIdPrefix = "receipt-preview",
 }: {
   receipt: ReceiptPreviewModel;
-  mode?: "screen" | "print";
+  mode?: "screen" | "print" | "single";
   testIdPrefix?: string;
 }) {
   if (mode === "print") {
     return (
       <div className="print-page print-only" data-testid={`${testIdPrefix}-print`}>
         <div className="print-two-up">
-          <ReceiptBlock receipt={receipt} testIdPrefix={`${testIdPrefix}-top`} />
+          <ReceiptBlock receipt={receipt} copy="original"   testIdPrefix={`${testIdPrefix}-top`} />
           <div className="print-cutline" />
-          <ReceiptBlock receipt={receipt} testIdPrefix={`${testIdPrefix}-bottom`} />
+          <ReceiptBlock receipt={receipt} copy="duplicado"  testIdPrefix={`${testIdPrefix}-bottom`} />
         </div>
       </div>
     );
   }
 
+  // single mode — only one receipt, no cut line, used in sidebar preview
+  if (mode === "single") {
+    return (
+      <div data-testid={`${testIdPrefix}-single`}>
+        <ReceiptBlock receipt={receipt} copy="original" testIdPrefix={`${testIdPrefix}-single`} />
+      </div>
+    );
+  }
+
   return (
-    <div className="glass rounded-2xl border border-border/70 p-4 md:p-6 lift" data-testid={`${testIdPrefix}-screen`}>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <div className="text-[12px] uppercase tracking-[0.22em] text-muted-foreground">Pré-visualização</div>
-          <div className="text-lg md:text-xl" style={{ fontFamily: "var(--font-serif)" }}>
-            Recibo (A4 — 2 por página)
-          </div>
-        </div>
-        <div className="text-xs text-muted-foreground hidden sm:block">
-          Dica: guarde o recibo para imprimir ou gerar PDF.
-        </div>
+    <div data-testid={`${testIdPrefix}-screen`} className="space-y-2">
+      <ReceiptBlock receipt={receipt} copy="original"  testIdPrefix={`${testIdPrefix}-screen-top`} />
+
+      {/* cut line */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 border-t border-dashed border-slate-300" />
+        <span style={{ fontSize: "9px", color: "#aaa", whiteSpace: "nowrap" }}>✂ Linha de corte</span>
+        <div className="flex-1 border-t border-dashed border-slate-300" />
       </div>
 
-      <div className="rounded-2xl bg-[linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.75))] border border-border/60 p-4 md:p-5">
-        <div className="grid grid-rows-[auto_auto_auto] gap-5">
-          <ReceiptBlock receipt={receipt} testIdPrefix={`${testIdPrefix}-screen-top`} />
-          <div className="border-t border-dashed border-border/70 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-background text-[11px] text-muted-foreground border border-border/70">
-              Linha de corte
-            </div>
-          </div>
-          <ReceiptBlock receipt={receipt} testIdPrefix={`${testIdPrefix}-screen-bottom`} />
-        </div>
-      </div>
+      <ReceiptBlock receipt={receipt} copy="duplicado" testIdPrefix={`${testIdPrefix}-screen-bottom`} />
     </div>
   );
 }

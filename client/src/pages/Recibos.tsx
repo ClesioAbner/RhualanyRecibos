@@ -1,20 +1,17 @@
 import { useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
-import SectionHeader from "@/components/SectionHeader";
 import EmptyState from "@/components/EmptyState";
 import PdfActions from "@/components/PdfActions";
 import { useReceipts } from "@/hooks/use-receipts";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { FileText, Filter, Loader2, Search, XCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { Receipt } from "@shared/schema";
 
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
 function fmtMoney(v: any) {
   const n = typeof v === "number" ? v : Number(v);
   if (!Number.isFinite(n)) return "—";
@@ -25,240 +22,282 @@ function fmtDate(d: any) {
   if (!d) return "—";
   const dt = typeof d === "string" ? new Date(d) : d;
   if (Number.isNaN(dt.getTime())) return String(d);
-  return dt.toLocaleDateString("pt-PT");
+  return dt.toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function rowKey(r: Receipt) {
-  return `receipt-${r.id}`;
+function rowKey(r: Receipt) { return `receipt-${r.id}`; }
+
+const TYPE_COLORS: Record<string, { dot: string; bg: string; text: string }> = {
+  Propina:   { dot: "#2563eb", bg: "#eff6ff", text: "#1d4ed8" },
+  Matrícula: { dot: "#059669", bg: "#f0fdf4", text: "#047857" },
+  Uniforme:  { dot: "#d97706", bg: "#fffbeb", text: "#b45309" },
+  Material:  { dot: "#7c3aed", bg: "#f5f3ff", text: "#6d28d9" },
+  Exame:     { dot: "#0891b2", bg: "#ecfeff", text: "#0e7490" },
+  Outro:     { dot: "#64748b", bg: "#f8fafc", text: "#475569" },
+};
+
+function TypePill({ type }: { type: string }) {
+  const c = TYPE_COLORS[type] ?? TYPE_COLORS["Outro"];
+  return (
+    <span
+      style={{ background: c.bg, color: c.text, border: `1px solid ${c.dot}22` }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase"
+    >
+      {type}
+    </span>
+  );
 }
 
+/* ══════════════════════════════════════════
+   MAIN
+══════════════════════════════════════════ */
 export default function Recibos() {
   const { toast } = useToast();
 
-  const [q, setQ] = useState("");
+  const [q, setQ]                         = useState("");
   const [receiptNumber, setReceiptNumber] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate]                   = useState("");
+  const [filtersOpen, setFiltersOpen]     = useState(false);
 
-  const filters = useMemo(() => {
-    return {
-      q: q.trim() || undefined,
-      receiptNumber: receiptNumber ? Number(receiptNumber) : undefined,
-      date: date || undefined,
-    };
-  }, [q, receiptNumber, date]);
+  const filters = useMemo(() => ({
+    q: q.trim() || undefined,
+    receiptNumber: receiptNumber ? Number(receiptNumber) : undefined,
+    date: date || undefined,
+  }), [q, receiptNumber, date]);
 
   const receipts = useReceipts(filters);
 
   const selectedIds = useMemo(() => {
-    // MVP: selection can be added later; keep PDF action for current filtered list (first 20)
-    const items = (receipts.data ?? []) as Receipt[];
-    return items.slice(0, 20).map((r) => r.id);
+    return ((receipts.data ?? []) as Receipt[]).slice(0, 20).map(r => r.id);
   }, [receipts.data]);
+
+  const hasFilters  = !!(q || receiptNumber || date);
+  const total       = receipts.data?.length ?? 0;
+  const totalValue  = (receipts.data ?? []).reduce((acc: number, r: any) => acc + (Number(r.amountPaid) || 0), 0);
+
+  const clearFilters = () => {
+    setQ(""); setReceiptNumber(""); setDate("");
+    toast({ title: "Filtros limpos" });
+  };
 
   return (
     <AppShell>
-      <div className="space-y-8">
-        <SectionHeader
-          eyebrow="Arquivo"
-          title="Recibos"
-          subtitle="Pesquise por nome do aluno, número do recibo ou data. Abra o detalhe para imprimir, gerar PDF ou ajustar informações."
-          right={
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/emitir"
-                className="inline-flex items-center justify-center rounded-xl px-5 py-3 font-semibold bg-gradient-to-r from-primary to-primary/85 text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15"
-                data-testid="recibos-cta-emitir"
-              >
-                Emitir novo
-              </Link>
+      <div className="max-w-5xl mx-auto space-y-5">
 
-              <PdfActions
-                receiptIds={selectedIds}
-                onPrint={() => window.print()}
-                testIdPrefix="recibos-actions"
-                variant="outline"
-              />
-            </div>
-          }
-          testId="recibos-header"
-        />
-
-        <Card className="glass rounded-2xl border border-border/70 p-5 md:p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-2xl grid place-items-center bg-gradient-to-br from-primary/14 via-accent/10 to-transparent border border-border/60">
-                <Filter className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <div className="text-[12px] uppercase tracking-[0.22em] text-muted-foreground">Filtros</div>
-                <div className="text-lg" style={{ fontFamily: "var(--font-serif)" }}>
-                  Pesquisa rápida
-                </div>
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setQ("");
-                setReceiptNumber("");
-                setDate("");
-                toast({ title: "Filtros limpos", description: "A mostrar todos os recibos." });
-              }}
-              className="rounded-xl"
-              data-testid="recibos-clear-filters"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Limpar
-            </Button>
-          </div>
-
-          <Separator className="my-5 bg-border/70" />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="q">Nome do aluno</Label>
-              <div className="relative">
-                <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input
-                  id="q"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Ex: Ana"
-                  className="rounded-xl pl-9"
-                  data-testid="filter-q"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="receiptNumber">Nº do recibo</Label>
-              <Input
-                id="receiptNumber"
-                type="number"
-                value={receiptNumber}
-                onChange={(e) => setReceiptNumber(e.target.value)}
-                placeholder="Ex: 102"
-                className="rounded-xl"
-                data-testid="filter-receiptNumber"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="date">Data (YYYY-MM-DD)</Label>
-              <Input
-                id="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                placeholder="2026-02-04"
-                className="rounded-xl"
-                data-testid="filter-date"
-              />
-              <div className="text-xs text-muted-foreground">Formato exato: AAAA-MM-DD</div>
+        {/* ══ HEADER ══ */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white leading-none">Recibos</h1>
+              <p className="text-xs text-slate-400 mt-0.5">Consulte, filtre e imprima todos os recibos</p>
             </div>
           </div>
-        </Card>
 
+          <Link
+            href="/emitir"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-sm font-semibold hover:bg-slate-700 transition-colors"
+            data-testid="recibos-cta-emitir"
+          >
+Emitir novo
+          </Link>
+        </div>
+
+        {/* ══ STATS ROW ══ */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { label: "Recibos encontrados", value: total.toString() },
+            { label: "Total cobrado",        value: `${fmtMoney(totalValue)} MT` },
+            { label: "Imprimir selecção",    value: "Até 20 recibos", action: true },
+          ].map(({ label, value, action }) => (
+            <div key={label}
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest truncate">{label}</p>
+                {action
+                  ? <PdfActions receiptIds={selectedIds} onPrint={() => window.print()} testIdPrefix="recibos-actions" variant="ghost" />
+                  : <p className="text-base font-black text-slate-800 dark:text-white tabular-nums mt-0.5">{value}</p>
+                }
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ══ SEARCH + FILTERS ══ */}
         <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            {/* search */}
+            <div className="relative flex-1">
+              <Input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="Pesquisar por nome do aluno…"
+                className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                data-testid="filter-q"
+              />
+
+            </div>
+
+            {/* filters toggle */}
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(o => !o)}
+              className={`inline-flex items-center gap-2 h-11 px-4 rounded-xl border text-sm font-semibold transition-all ${
+                filtersOpen || hasFilters
+                  ? "border-slate-800 bg-slate-800 text-white"
+                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              <span>Filtros</span>
+              {hasFilters && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />}
+            </button>
+
+            {hasFilters && (
+              <button onClick={clearFilters}
+                className="h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-500 hover:bg-slate-50 transition-all"
+                data-testid="recibos-clear-filters">
+                Limpar
+              </button>
+            )}
+          </div>
+
+          {/* expanded filters */}
+          {filtersOpen && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nº do Recibo</label>
+                <Input type="number" value={receiptNumber}
+                       onChange={e => setReceiptNumber(e.target.value)}
+                       placeholder="Ex: 102"
+                       className="h-10 rounded-xl text-sm border-slate-200 dark:border-slate-700"
+                       data-testid="filter-receiptNumber" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data (AAAA-MM-DD)</label>
+                <Input value={date} onChange={e => setDate(e.target.value)}
+                       placeholder="2026-02-04"
+                       className="h-10 rounded-xl text-sm border-slate-200 dark:border-slate-700"
+                       data-testid="filter-date" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ══ LIST ══ */}
+        <div className="space-y-2">
+
+          {/* loading */}
           {receipts.isLoading && (
-            <Card className="glass rounded-2xl border border-border/70 p-8 flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <div>
-                <div className="font-semibold">A carregar recibos…</div>
-                <div className="text-sm text-muted-foreground">Aguarde um instante.</div>
-              </div>
-            </Card>
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+              <Loader2 className="h-5 w-5 animate-spin text-slate-400 flex-shrink-0" />
+              <p className="text-sm text-slate-500">A carregar recibos…</p>
+            </div>
           )}
 
+          {/* error */}
           {receipts.error && (
-            <Card className="glass rounded-2xl border border-border/70 p-8">
-              <div className="font-semibold">Erro ao carregar</div>
-              <div className="text-sm text-muted-foreground mt-1">
-                {(receipts.error as any)?.message ?? "Ocorreu um erro inesperado."}
-              </div>
-            </Card>
+            <div className="p-5 rounded-2xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800">
+              <p className="text-sm font-semibold text-red-600">Erro ao carregar</p>
+              <p className="text-xs text-red-400 mt-0.5">{(receipts.error as any)?.message ?? "Ocorreu um erro."}</p>
+            </div>
           )}
 
-          {!receipts.isLoading && !receipts.error && (receipts.data?.length ?? 0) === 0 && (
+          {/* empty */}
+          {!receipts.isLoading && !receipts.error && total === 0 && (
             <EmptyState
-              icon={<FileText className="h-6 w-6 text-primary" />}
+              icon={null}
               title="Sem recibos"
-              description="Ainda não há recibos para estes filtros. Emita um novo recibo para começar."
+              description="Ainda não há recibos para estes filtros."
               action={
-                <Link
-                  href="/emitir"
-                  className="inline-flex items-center justify-center rounded-xl px-5 py-3 font-semibold bg-gradient-to-r from-primary to-primary/85 text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15"
-                  data-testid="empty-emitir"
-                >
-                  Emitir recibo
+                <Link href="/emitir"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-bold hover:bg-slate-700 transition-colors"
+                  data-testid="empty-emitir">
+Emitir recibo
                 </Link>
               }
               testId="recibos-empty"
             />
           )}
 
-          <div className="grid grid-cols-1 gap-3">
-            {(receipts.data ?? []).map((r: any) => (
-              <Link
-                key={rowKey(r)}
-                href={`/recibos/${r.id}`}
-                className="group glass lift-hover rounded-2xl border border-border/70 p-5 md:p-6 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15"
-                data-testid={`receipt-row-${r.id}`}
-              >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="secondary" className="rounded-full" data-testid={`receipt-number-${r.id}`}>
-                        Nº {r.receiptNumber}
-                      </Badge>
-                      <div className="text-sm text-muted-foreground tabular-nums" data-testid={`receipt-date-${r.id}`}>
-                        {fmtDate(r.issueDate)}
-                      </div>
-                    </div>
+          {/* receipt cards */}
+          {(receipts.data ?? []).map((r: any, idx: number) => (
+            <Link key={rowKey(r)} href={`/recibos/${r.id}`}
+                  className="group block" data-testid={`receipt-row-${r.id}`}>
+              <div className="relative flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-150">
 
-                    <div className="text-xl md:text-2xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
-                      <span data-testid={`receipt-student-${r.id}`}>{r.studentName}</span>
-                    </div>
+                {/* left color bar */}
+                <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full"
+                     style={{ background: TYPE_COLORS[r.paymentDescription]?.dot ?? "#64748b" }} />
 
-                    <div className="text-sm text-muted-foreground">
-                      {r.studentClass} Classe • {r.paymentDescription} • {r.paymentMethod}
-                    </div>
+                {/* number badge */}
+                <div className="hidden sm:flex h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 items-center justify-center flex-shrink-0 ml-2">
+                  <span className="text-[10px] font-black text-slate-500 tabular-nums">
+                    {String(r.receiptNumber).padStart(4, "0")}
+                  </span>
+                </div>
+
+                {/* main info */}
+                <div className="flex-1 min-w-0 pl-3 sm:pl-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="sm:hidden text-[10px] font-black text-slate-400 tabular-nums">
+                      #{String(r.receiptNumber).padStart(4, "0")}
+                    </span>
+                    <TypePill type={r.paymentDescription} />
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+{fmtDate(r.issueDate)}
+                    </span>
                   </div>
 
-                  <div className="md:text-right">
-                    <div className="text-[12px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Valor
-                    </div>
-                    <div className="text-2xl font-bold tabular-nums">
-                      {fmtMoney(r.amountPaid)} <span className="text-base font-semibold text-muted-foreground">MT</span>
-                    </div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-white truncate"
+                     data-testid={`receipt-student-${r.id}`}>
+                    {r.studentName}
+                  </p>
 
-                    <div className="mt-2 inline-flex items-center gap-2 text-sm text-primary opacity-90 group-hover:opacity-100 transition-opacity">
-                      Abrir detalhe →
-                    </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+                    <span>{r.studentClass} Classe</span>
+                    <span>·</span>
+                    <span>{r.paymentMethod}</span>
+                    {r.guardianName && (
+                      <><span>·</span><span className="truncate max-w-[100px]">{r.guardianName}</span></>
+                    )}
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
+
+                {/* value + arrow */}
+                <div className="pl-3 sm:pl-0 flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Valor</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-white tabular-nums leading-tight">
+                      {fmtMoney(r.amountPaid)}
+                      <span className="text-xs font-semibold text-slate-400 ml-1">MT</span>
+                    </p>
+                  </div>
+
+                </div>
+              </div>
+            </Link>
+          ))}
+
+          {/* count footer */}
+          {total > 0 && (
+            <p className="text-center text-xs text-slate-400 pt-2">
+              {total} recibo{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""}
+              {totalValue > 0 && <> · Total: <span className="font-bold text-slate-600">{fmtMoney(totalValue)} MT</span></>}
+            </p>
+          )}
         </div>
 
-        {/* Print helper (optional): print current list as simple reference */}
+        {/* ══ PRINT TABLE ══ */}
         <div className="print-only print-page">
-          <div className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-serif)" }}>
-            Lista de Recibos
-          </div>
+          <div className="text-lg font-semibold mb-2">Lista de Recibos</div>
           <div className="text-sm text-neutral-600 mb-4">
-            Filtros: {filters.q ?? "—"} • Nº: {filters.receiptNumber ?? "—"} • Data: {filters.date ?? "—"}
+            Filtros: {filters.q ?? "—"} · Nº: {filters.receiptNumber ?? "—"} · Data: {filters.date ?? "—"}
           </div>
           <table className="w-full text-sm border border-neutral-300">
             <thead className="bg-neutral-100">
               <tr>
-                <th className="p-2 border border-neutral-300 text-left">Nº</th>
-                <th className="p-2 border border-neutral-300 text-left">Data</th>
-                <th className="p-2 border border-neutral-300 text-left">Aluno</th>
-                <th className="p-2 border border-neutral-300 text-left">Classe</th>
-                <th className="p-2 border border-neutral-300 text-right">Valor (MT)</th>
+                {["Nº", "Data", "Aluno", "Classe", "Tipo", "Valor (MT)"].map(h => (
+                  <th key={h} className="p-2 border border-neutral-300 text-left">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -268,9 +307,14 @@ export default function Recibos() {
                   <td className="p-2 border border-neutral-300">{fmtDate(r.issueDate)}</td>
                   <td className="p-2 border border-neutral-300">{r.studentName}</td>
                   <td className="p-2 border border-neutral-300">{r.studentClass}</td>
+                  <td className="p-2 border border-neutral-300">{r.paymentDescription}</td>
                   <td className="p-2 border border-neutral-300 text-right tabular-nums">{fmtMoney(r.amountPaid)}</td>
                 </tr>
               ))}
+              <tr className="font-bold bg-neutral-50">
+                <td colSpan={5} className="p-2 border border-neutral-300 text-right">Total:</td>
+                <td className="p-2 border border-neutral-300 text-right tabular-nums">{fmtMoney(totalValue)}</td>
+              </tr>
             </tbody>
           </table>
         </div>
