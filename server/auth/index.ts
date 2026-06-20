@@ -49,10 +49,10 @@ export function setupAuth(app: Express): void {
       store: new PgStore({
         pool,
         tableName: "user_sessions",
-        // Cria a tabela de sessões automaticamente se faltar (ex.: numa base de
-        // dados nova, como o deploy no Render/Neon). É idempotente: não toca numa
-        // tabela já existente.
-        createTableIfMissing: true,
+        // A tabela de sessões é provisionada à parte (ver README → "Sessões").
+        // NÃO usar createTableIfMissing: true — no build empacotado (dist) o
+        // connect-pg-simple não encontra o seu table.sql e rebenta no arranque.
+        createTableIfMissing: false,
       }),
       secret: secret || "dev-only-insecure-secret-change-me",
       resave: false,

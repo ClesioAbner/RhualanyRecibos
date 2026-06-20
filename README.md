@@ -74,6 +74,21 @@ Ver [.env.example](.env.example). As essenciais: `DATABASE_URL`, `SESSION_SECRET
 | `npm run reset-admin -- '<password>'` | Repõe a password do admin na BD |
 | `npm run reset-secretaria -- '<password>'` | Repõe a password da secretária |
 
+## Sessões (base de dados nova)
+
+As sessões usam `connect-pg-simple` com `createTableIfMissing: false` (no build
+empacotado o pacote não encontra o seu `table.sql`). Por isso, **numa base de
+dados nova** (ex.: primeiro deploy), criar a tabela uma vez:
+
+```sql
+CREATE TABLE IF NOT EXISTS "user_sessions" (
+  "sid" varchar NOT NULL PRIMARY KEY,
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "user_sessions" ("expire");
+```
+
 ## Segurança
 
 Sessões em PostgreSQL (cookie `httpOnly`, regeneração no login), palavras-passe
