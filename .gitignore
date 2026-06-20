@@ -1,0 +1,43 @@
+# Dependências
+node_modules/
+
+# Build / output
+dist/
+server/public/
+
+# Segredos e variáveis de ambiente — NUNCA commitar
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Plataformas / deploy local (Replit, Netlify…)
+.replit
+.replit.nix
+replit.nix
+.netlify/
+.local/
+.config/
+.upm/
+.cache/
+.breakpoints
+generated-icon.png
+
+# Ficheiros temporários / rascunho
+*.bak
+*.tmp
+*.tar.gz
+test.html
+vite.config.ts.*
