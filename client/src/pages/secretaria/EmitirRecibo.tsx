@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { CreateReceiptRequest, Receipt as ReceiptType } from "@shared/schema";
 import { api } from "@shared/routes";
 import { cn } from "@/lib/utils";
+import { receiptCode } from "@/lib/format";
 import { NAVY, MUTED, LINE } from "@/lib/theme";
 
 const TYPES = [
@@ -112,6 +113,7 @@ export default function EmitirRecibo() {
       paymentDescription: created?.paymentDescription ?? paymentDescription,
       paymentMethod: created?.paymentMethod ?? method,
       receiptNumber: created?.receiptNumber ?? undefined,
+      schoolYear: created?.schoolYear ?? undefined,
       issueDate: (created?.issueDate ?? new Date().toISOString().slice(0, 10)) as any,
       amountPaid: (created ? Number(created.amountPaid) : Number.isFinite(n) ? n : undefined) as any,
       amountInWords: created?.amountInWords ?? (valorExtenso(n) || "—"),
@@ -140,7 +142,7 @@ export default function EmitirRecibo() {
       const validated = api.receipts.create.input.parse(payload);
       const result = await create.mutateAsync(validated);
       setCreated(result as any);
-      toast({ title: "Recibo emitido", description: `Nº ${result.receiptNumber} criado com sucesso.` });
+      toast({ title: "Recibo emitido", description: `${receiptCode(result.receiptNumber, result.schoolYear)} criado com sucesso.` });
     } catch (e: any) {
       toast({ title: "Erro ao emitir", description: e?.message ?? "Verifique os campos.", variant: "destructive" });
     }
@@ -266,7 +268,7 @@ export default function EmitirRecibo() {
 
             {created && (
               <div className="mx-6 mb-2 rounded-lg border px-4 py-2.5 text-[13px] font-semibold" style={{ borderColor: "#bbf7d0", background: "#f0fdf4", color: "#047857" }}>
-                Recibo Nº {created.receiptNumber} emitido com sucesso.
+                Recibo {receiptCode(created.receiptNumber, created.schoolYear)} emitido com sucesso.
               </div>
             )}
 
@@ -285,7 +287,7 @@ export default function EmitirRecibo() {
             <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: LINE }}>
               <div className="px-4 py-2.5 border-b flex items-center justify-between" style={{ borderColor: "#f1f5f9" }}>
                 <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: MUTED }}>Pré-visualização</p>
-                <p className="text-[11px]" style={{ color: MUTED }}>{created ? `Nº ${created.receiptNumber}` : "Rascunho"}</p>
+                <p className="text-[11px]" style={{ color: MUTED }}>{created ? receiptCode(created.receiptNumber, created.schoolYear) : "Rascunho"}</p>
               </div>
               <div className="overflow-hidden bg-slate-50 p-3" style={{ maxHeight: 520 }}>
                 <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%", pointerEvents: "none" }}>

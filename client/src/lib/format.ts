@@ -46,8 +46,8 @@ export function formatRelative(d: string | Date | null | undefined): string {
 }
 
 /** Nº de recibo zero-padded: 1 → "RH-0001". */
-export function receiptCode(n: number): string {
-  return `RH-${String(n).padStart(4, "0")}`;
+export function receiptCode(n: number, year?: number | null): string {
+  return `RH-${String(n).padStart(4, "0")}${year ? `/${year}` : ""}`;
 }
 
 /**

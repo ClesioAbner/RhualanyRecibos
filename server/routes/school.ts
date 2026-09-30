@@ -151,9 +151,14 @@ export function registerSchoolRoutes(app: Express): void {
 
   app.delete(api.students.delete.path, requireAdmin, async (req, res) => {
     const id = idOf(req);
+    const student = await storage.getStudent(id);
     const ok = await storage.deleteStudent(id);
     if (!ok) return res.status(404).json({ message: "Aluno não encontrado" });
-    audit(req, "student.deleted", { targetType: "student", targetId: id });
+    audit(req, "student.deleted", {
+      targetType: "student",
+      targetId: id,
+      metadata: { fullName: student?.fullName, classId: student?.classId },
+    });
     res.status(204).send();
   });
 
@@ -176,6 +181,11 @@ export function registerSchoolRoutes(app: Express): void {
         email: input.email ?? null,
         isPrimary: input.isPrimary ?? false,
       });
+      audit(req, "guardian.created", {
+        targetType: "student",
+        targetId: student.id,
+        metadata: { fullName: created.fullName, studentName: student.fullName, relationship: created.relationship },
+      });
       res.status(201).json(created);
     } catch (err) {
       return handleDbError(res, err);
@@ -193,6 +203,11 @@ export function registerSchoolRoutes(app: Express): void {
       if (input.isPrimary !== undefined) updates.isPrimary = input.isPrimary;
       const updated = await storage.updateGuardian(idOf(req), updates);
       if (!updated) return res.status(404).json({ message: "Encarregado não encontrado" });
+      audit(req, "guardian.updated", {
+        targetType: "student",
+        targetId: updated.studentId,
+        metadata: { fullName: updated.fullName, changes: updates },
+      });
       res.json(updated);
     } catch (err) {
       return handleDbError(res, err);
@@ -200,8 +215,14 @@ export function registerSchoolRoutes(app: Express): void {
   });
 
   app.delete(api.guardians.delete.path, requireAdmin, async (req, res) => {
+    const guardian = await storage.getGuardian(idOf(req));
     const ok = await storage.deleteGuardian(idOf(req));
     if (!ok) return res.status(404).json({ message: "Encarregado não encontrado" });
+    audit(req, "guardian.deleted", {
+      targetType: "student",
+      targetId: guardian?.studentId,
+      metadata: { fullName: guardian?.fullName },
+    });
     res.status(204).send();
   });
 
@@ -211,16 +232,14 @@ export function registerSchoolRoutes(app: Express): void {
   });
 }
 
-// ── seed: garante as turmas 1ª–7ª classe (primária) ─────────────────────────
-// Idempotente: cria apenas as que faltam (por nome), por isso é seguro correr
-// em cada arranque sem duplicar nem mexer nas turmas já existentes.
+// ── seed: turmas 1ª–7ª classe (primária) ─────────────────────────
+// Só numa instalação nova (tabela de turmas vazia). Se já existem turmas, não
+// recria nada — uma turma apagada pelo administrador não pode voltar a aparecer
+// no arranque seguinte do servidor.
 export async function seedClasses(): Promise<void> {
   const existing = await storage.listClasses();
-  const have = new Set(existing.map((c) => c.name));
-  const ordinais = ["1ª", "2ª", "3ª", "4ª", "5ª", "6ª", "7ª"];
-  for (const o of ordinais) {
-    const name = `${o} Classe`;
-    if (have.has(name)) continue;
-    await storage.createClass({ name, level: "primaria", monthlyFee: "1500", active: true });
+  if (existing.length > 0) return;
+  for (const o of ["1ª", "2ª", "3ª", "4ª", "5ª", "6ª", "7ª"]) {
+    await storage.createClass({ name: `${o} Classe`, level: "primaria", monthlyFee: "1500", active: true });
   }
 }

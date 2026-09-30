@@ -88,7 +88,7 @@ export default function Recibos() {
                   {rows.map((r) => (
                     <tr key={r.id} data-testid={`receipt-row-${r.id}`} className="border-t hover:bg-[#f7fafd] cursor-pointer" style={{ borderColor: "#f3f5f8" }}>
                       <td className="px-5 py-2.5 font-semibold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>
-                        <Link href={`/recibos/${r.id}`} className="block">{receiptCode(r.receiptNumber)}</Link>
+                        <Link href={`/recibos/${r.id}`} className="block">{receiptCode(r.receiptNumber, r.schoolYear)}</Link>
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: MUTED }}><Link href={`/recibos/${r.id}`} className="block">{fmtDate(r.issueDate)}</Link></td>
                       <td className="px-3 py-2.5 font-medium" style={{ color: INK }}><Link href={`/recibos/${r.id}`} className="block" data-testid={`receipt-student-${r.id}`}>{r.studentName}</Link></td>
@@ -118,7 +118,7 @@ export default function Recibos() {
             <tbody>
               {rows.map((r) => (
                 <tr key={`print-${r.id}`}>
-                  <td className="p-2 border border-neutral-300 tabular-nums">{receiptCode(r.receiptNumber)}</td>
+                  <td className="p-2 border border-neutral-300 tabular-nums">{receiptCode(r.receiptNumber, r.schoolYear)}</td>
                   <td className="p-2 border border-neutral-300">{fmtDate(r.issueDate)}</td>
                   <td className="p-2 border border-neutral-300">{r.studentName}</td>
                   <td className="p-2 border border-neutral-300">{formatTurma(r.studentClass)}</td>

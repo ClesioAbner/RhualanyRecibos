@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-admin";
 import { useMe } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm, useSuccess } from "@/components/ConfirmDialog";
 import { C } from "@/lib/adminColors";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,8 @@ function IconBtn({ label, onClick, danger, children }: { label: string; onClick:
 
 export default function AdminUtilizadores() {
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const success = useSuccess();
   const { data: me } = useMe();
   const { data: users, isLoading } = useUsers();
   const createM = useCreateUser();
@@ -95,29 +98,44 @@ export default function AdminUtilizadores() {
       toast({ title: "Operação não permitida", description: "Não pode desactivar a sua própria conta.", variant: "destructive" });
       return;
     }
+    const ok = await confirm(
+      u.active
+        ? { tone: "danger", title: "Deseja mesmo desactivar esta conta?", description: <><strong>{u.name}</strong> deixa de conseguir iniciar sessão.</> }
+        : { title: "Deseja mesmo activar esta conta?", description: <><strong>{u.name}</strong> volta a conseguir iniciar sessão.</> },
+    );
+    if (!ok) return;
     try {
       await updateM.mutateAsync({ id: u.id, updates: { active: !u.active } });
-      toast({ title: u.active ? "Conta desactivada" : "Conta activada" });
+      success(u.active ? "Conta desactivada com sucesso" : "Conta activada com sucesso");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }
   };
 
   const doResetPw = async (u: AdminUser) => {
-    if (!window.confirm(`Enviar email de reposição de palavra-passe para ${u.email}?`)) return;
+    const ok = await confirm({
+      title: "Deseja mesmo repor a palavra-passe?",
+      description: <>Será enviado um email de reposição para <strong>{u.email}</strong>.</>,
+    });
+    if (!ok) return;
     try {
       await resetPw.mutateAsync(u.id);
-      toast({ title: "Email de reposição enviado", description: u.email });
+      success("Email enviado com sucesso", u.email);
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }
   };
 
   const doReset2fa = async (u: AdminUser) => {
-    if (!window.confirm(`Forçar reset do 2FA de ${u.name}? O utilizador terá de o configurar de novo.`)) return;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Deseja mesmo repor o 2FA?",
+      description: <><strong>{u.name}</strong> terá de configurar o 2FA de novo no próximo início de sessão.</>,
+    });
+    if (!ok) return;
     try {
       await reset2fa.mutateAsync(u.id);
-      toast({ title: "2FA reposto" });
+      success("2FA reposto com sucesso");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }

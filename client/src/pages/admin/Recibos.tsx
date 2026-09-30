@@ -151,7 +151,7 @@ export default function AdminRecibos() {
                   const voided = !!r.deletedAt;
                   return (
                     <tr key={r.id} data-testid={`recibo-row-${r.id}`} className="border-t" style={{ borderColor: "#f1f5f9", opacity: voided ? 0.55 : 1 }}>
-                      <td className="px-4 py-2.5 font-semibold tabular-nums" style={{ color: C.navy }}>{receiptCode(r.receiptNumber)}</td>
+                      <td className="px-4 py-2.5 font-semibold tabular-nums" style={{ color: C.navy }}>{receiptCode(r.receiptNumber, r.schoolYear)}</td>
                       <td className="px-4 py-2.5" style={{ color: C.textSecondary }}>{formatDate(r.issueDate)}</td>
                       <td className="px-4 py-2.5 font-medium" style={{ color: C.textPrimary }}>{r.studentName}</td>
                       <td className="px-4 py-2.5" style={{ color: C.textSecondary }}>{formatTurma(r.studentClass)}</td>
@@ -184,7 +184,7 @@ export default function AdminRecibos() {
 
       <Dialog open={!!voidTarget} onOpenChange={(o) => { if (!o) { setVoidTarget(null); setReason(""); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Anular recibo {voidTarget ? receiptCode(voidTarget.receiptNumber) : ""}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Anular recibo {voidTarget ? receiptCode(voidTarget.receiptNumber, voidTarget.schoolYear) : ""}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-[13px]" style={{ color: C.textSecondary }}>
               O recibo será marcado como anulado e deixa de contar para os totais. A versão anterior fica guardada no histórico. Esta operação não apaga o registo.

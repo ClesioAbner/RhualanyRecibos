@@ -3,6 +3,7 @@ import AdminShell from "@/components/layout/AdminShell";
 import AdminCard from "@/components/AdminCard";
 import { useClasses, useCreateClass, useUpdateClass, useDeleteClass } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm, useSuccess } from "@/components/ConfirmDialog";
 import { C } from "@/lib/adminColors";
 import { classLabel } from "@/lib/turma";
 import { formatMt } from "@/lib/format";
@@ -41,6 +42,8 @@ function IconBtn({ label, onClick, danger, children }: { label: string; onClick:
 
 export default function AdminTurmas() {
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const success = useSuccess();
   const { data: classes, isLoading, error } = useClasses();
   const createM = useCreateClass();
   const updateM = useUpdateClass();
@@ -59,10 +62,17 @@ export default function AdminTurmas() {
 
   const submit = async () => {
     const payload = { name: form.name.trim(), level: form.level, monthlyFee: Number(form.monthlyFee || 0) };
+    if (editing) {
+      const ok = await confirm({
+        title: "Deseja mesmo guardar as alterações?",
+        description: <>A turma <strong>{editing.name}</strong> será actualizada.</>,
+      });
+      if (!ok) return;
+    }
     try {
       if (editing) {
         await updateM.mutateAsync({ id: editing.id, updates: payload });
-        toast({ title: "Turma actualizada" });
+        success("Actualizado com sucesso");
       } else {
         await createM.mutateAsync(payload);
         toast({ title: "Turma criada" });
@@ -74,22 +84,36 @@ export default function AdminTurmas() {
   };
 
   const toggleActive = async (c: ClassRow) => {
+    const ok = await confirm(
+      c.active
+        ? { tone: "danger", title: "Deseja mesmo desactivar esta turma?", description: <>A turma <strong>{c.name}</strong> deixa de estar disponível para novos alunos.</> }
+        : { title: "Deseja mesmo activar esta turma?", description: <>A turma <strong>{c.name}</strong> volta a estar disponível.</> },
+    );
+    if (!ok) return;
     try {
       await updateM.mutateAsync({ id: c.id, updates: { active: !c.active } });
-      toast({ title: c.active ? "Turma desactivada" : "Turma activada" });
+      success(c.active ? "Desactivada com sucesso" : "Activada com sucesso");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }
   };
 
   const remove = async (c: ClassRow) => {
-    const ok = window.confirm(
-      `Apagar a turma "${c.name}"?\n\nOs alunos desta turma também serão apagados. Os recibos antigos ficam preservados — apenas deixam de estar ligados a um aluno (o nome e a turma ficam guardados no recibo).\n\nEsta operação é PERMANENTE. Continuar?`,
-    );
+    const ok = await confirm({
+      tone: "danger",
+      title: "Deseja mesmo apagar esta turma?",
+      description: <>Vai apagar a turma <strong>{c.name}</strong> de forma permanente.</>,
+      details: [
+        "Todos os alunos desta turma também serão apagados.",
+        "Os recibos antigos ficam preservados (nome e turma guardados no recibo).",
+        "Esta operação não pode ser desfeita.",
+      ],
+      requireText: c.name,
+    });
     if (!ok) return;
     try {
       await deleteM.mutateAsync(c.id);
-      toast({ title: "Turma apagada" });
+      success("Apagado com sucesso", "A turma foi apagada.");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }

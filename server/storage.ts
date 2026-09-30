@@ -22,7 +22,9 @@ import {
   type InsertGuardian,
   type AuditLog,
 } from "@shared/schema";
-import { and, desc, eq, ilike, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { AUDIT_CATEGORIES, type AuditCategory } from "@shared/audit";
+import { activeYear } from "./years";
 
 export type StudentFilters = { classId?: number; q?: string; active?: boolean };
 
@@ -65,8 +67,7 @@ export type AdminStats = {
     revenueTotal: number;
   };
   studentsByClass: { classId: number; name: string; level: string; count: number }[];
-  revenueByMonth: { month: string; total: number }[];
-  receiptsByType: { type: string; count: number; total: number }[];
+  revenueByMonth: { month: string; total: number }[];  receiptsByType: { type: string; count: number; total: number }[];
   paymentsByMethod: { method: string; count: number; total: number }[];
   recentReceipts: ReceiptResponse[];
 };
@@ -91,7 +92,7 @@ export interface IStorage {
   updateReceipt(id: number, updates: UpdateReceiptRequest): Promise<ReceiptResponse | undefined>;
   deleteReceipt(id: number): Promise<boolean>;
 
-  getNextReceiptNumber(): Promise<number>;
+  getNextReceiptNumber(year: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -155,7 +156,7 @@ export class DatabaseStorage implements IStorage {
     receiptNumber?: number;
     date?: string;
   }): Promise<ReceiptResponse[]> {
-    const whereParts: any[] = [];
+    const whereParts: any[] = [eq(receipts.schoolYear, await activeYear())];
     if (filters?.receiptNumber) {
       whereParts.push(eq(receipts.receiptNumber, filters.receiptNumber));
     }
@@ -189,20 +190,24 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async getNextReceiptNumber(): Promise<number> {
+  /** Próximo número na série do ano lectivo (cada ano recomeça no 1). */
+  async getNextReceiptNumber(year: number): Promise<number> {
     const [row] = await db
       .select({ max: sql<number>`coalesce(max(${receipts.receiptNumber}), 0)` })
-      .from(receipts);
+      .from(receipts)
+      .where(eq(receipts.schoolYear, year));
     return (row?.max ?? 0) + 1;
   }
 
   async createReceipt(input: CreateReceiptRequest): Promise<ReceiptResponse> {
-    const next = await this.getNextReceiptNumber();
+    const year = await activeYear();
+    const next = await this.getNextReceiptNumber(year);
     const [row] = await db
       .insert(receipts)
       .values({
         ...(input as any), // receiptType is a varchar-backed union; drizzle-zod widens it to string
         receiptNumber: next,
+        schoolYear: year,
         issueDate: new Date().toISOString().slice(0, 10),
       })
       .returning();
@@ -376,7 +381,8 @@ export class DatabaseStorage implements IStorage {
   // ───────────────────────────── admin stats ─────────────────────────────
   async getAdminStats(): Promise<AdminStats> {
     const month = new Date().toISOString().slice(0, 7); // 'AAAA-MM'
-    const liveReceipt = isNull(receipts.deletedAt);
+    // Só o ano lectivo em curso: ao abrir um ano novo, o painel recomeça do zero.
+    const liveReceipt = and(isNull(receipts.deletedAt), eq(receipts.schoolYear, await activeYear()));
 
     const countOf = async (table: any, where?: any): Promise<number> => {
       const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table).where(where);
@@ -477,7 +483,7 @@ export class DatabaseStorage implements IStorage {
 
   // ───────────────────────── receipts (admin) ─────────────────────────
   async listReceiptsAdmin(filters?: ReceiptAdminFilters): Promise<ReceiptResponse[]> {
-    const parts: any[] = [];
+    const parts: any[] = [eq(receipts.schoolYear, await activeYear())];
     if (!filters?.includeVoided) parts.push(isNull(receipts.deletedAt));
     if (filters?.studentId) parts.push(eq(receipts.studentId, filters.studentId));
     if (filters?.method) parts.push(eq(receipts.paymentMethod, filters.method));
@@ -497,17 +503,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async adminReceiptTotals(): Promise<{ emitted: number; totalValue: number; voided: number }> {
+    const inYear = eq(receipts.schoolYear, await activeYear());
     const [live] = await db
       .select({
         n: sql<number>`count(*)::int`,
         total: sql<number>`coalesce(sum(${receipts.amountPaid}), 0)::float8`,
       })
       .from(receipts)
-      .where(isNull(receipts.deletedAt));
+      .where(and(inYear, isNull(receipts.deletedAt)));
     const [voided] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(receipts)
-      .where(isNotNull(receipts.deletedAt));
+      .where(and(inYear, isNotNull(receipts.deletedAt)));
     return { emitted: live?.n ?? 0, totalValue: live?.total ?? 0, voided: voided?.n ?? 0 };
   }
 
@@ -608,16 +615,43 @@ export class DatabaseStorage implements IStorage {
       ip: entry.ip ?? null,
       userAgent: entry.userAgent ?? null,
       metadata: (entry.metadata ?? null) as any,
+      schoolYear: await activeYear(),
     });
   }
 
-  async listAudit(opts: { limit: number; cursorId?: number; action?: string; q?: string }): Promise<AuditLog[]> {
+  async listAudit(opts: {
+    limit: number;
+    cursorId?: number;
+    action?: string;
+    q?: string;
+    year?: number;
+    category?: AuditCategory;
+  }): Promise<AuditLog[]> {
     const parts: any[] = [];
     if (opts.cursorId) parts.push(lt(auditLog.id, opts.cursorId));
     if (opts.action) parts.push(eq(auditLog.action, opts.action));
+    // Sem ano pedido → só o ano lectivo em curso (os anteriores vêm do Histórico).
+    parts.push(eq(auditLog.schoolYear, opts.year ?? (await activeYear())));
+    if (opts.category) {
+      const c = AUDIT_CATEGORIES[opts.category];
+      const matches: any[] = [
+        ...(c.actions ?? []).map((a) => eq(auditLog.action, a)),
+        ...(c.prefixes ?? []).map((p) => ilike(auditLog.action, `${p}%`)),
+      ];
+      parts.push(or(...matches));
+      for (const ex of c.exclude ?? []) parts.push(ne(auditLog.action, ex));
+    }
     if (opts.q && opts.q.trim()) {
+      // Pesquisa também dentro dos detalhes (nomes de alunos, turmas, recibos…).
       const q = `%${opts.q.trim()}%`;
-      parts.push(or(ilike(auditLog.actorEmail, q), ilike(auditLog.action, q)));
+      parts.push(
+        or(
+          ilike(auditLog.actorEmail, q),
+          ilike(auditLog.action, q),
+          ilike(auditLog.targetId, q),
+          sql`${auditLog.metadata}::text ilike ${q}`,
+        ),
+      );
     }
     const where = parts.length ? and(...parts) : undefined;
     return db
@@ -626,6 +660,23 @@ export class DatabaseStorage implements IStorage {
       .where(where)
       .orderBy(desc(auditLog.id))
       .limit(opts.limit);
+  }
+
+  /** Acções existentes (com contagem) e anos com registos — para os filtros. */
+  async auditFacets(year?: number): Promise<{ actions: { action: string; count: number }[]; years: number[] }> {
+    const actions = await db
+      .select({ action: auditLog.action, count: sql<number>`count(*)::int` })
+      .from(auditLog)
+      .where(eq(auditLog.schoolYear, year ?? (await activeYear())))
+      .groupBy(auditLog.action)
+      .orderBy(desc(sql`count(*)`));
+    const years = await db
+      .select({ year: auditLog.schoolYear })
+      .from(auditLog)
+      .where(isNotNull(auditLog.schoolYear))
+      .groupBy(auditLog.schoolYear)
+      .orderBy(desc(auditLog.schoolYear));
+    return { actions, years: years.map((y) => y.year!) };
   }
 
   async recentAudit(limit: number): Promise<AuditLog[]> {
@@ -645,7 +696,7 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(receipts)
-      .where(and(isNull(receipts.deletedAt), sql`to_char(${receipts.issueDate}, 'YYYY') = ${year}`))
+      .where(and(isNull(receipts.deletedAt), eq(receipts.schoolYear, Number(year))))
       .orderBy(receipts.issueDate);
   }
 
@@ -761,6 +812,7 @@ export class DatabaseStorage implements IStorage {
         pdfBase64: input.pdfBase64,
         generatedByUserId: input.userId ?? null,
         generatedByEmail: input.email ?? null,
+        schoolYear: await activeYear(),
       })
       .returning({ id: statements.id });
     return row.id;
@@ -780,7 +832,8 @@ export class DatabaseStorage implements IStorage {
       deleteReason: string | null;
     }[]
   > {
-    const where = includeDeleted ? undefined : isNull(statements.deletedAt);
+    const inYear = eq(statements.schoolYear, await activeYear());
+    const where = includeDeleted ? inYear : and(inYear, isNull(statements.deletedAt));
     return db
       .select({
         id: statements.id,
@@ -824,7 +877,7 @@ export class DatabaseStorage implements IStorage {
         and(
           isNull(receipts.deletedAt),
           eq(receipts.studentId, studentId),
-          sql`to_char(${receipts.issueDate}, 'YYYY') = ${year}`,
+          eq(receipts.schoolYear, Number(year)),
         ),
       )
       .orderBy(receipts.issueDate);

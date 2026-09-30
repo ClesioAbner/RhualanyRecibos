@@ -22,7 +22,11 @@ import {
   type UserCreateInput,
   type UserUpdateInput,
   type StatementMeta,
+  type AuditFacets,
+  type SchoolYearRow,
+  type SchoolYearDetail,
 } from "@shared/routes";
+import type { AuditCategory } from "@shared/audit";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -266,22 +270,66 @@ export function useResetUserTwoFactor() {
 }
 
 // ───────────────────────────── audit log ─────────────────────────────
-export type AuditFilters = { action?: string; q?: string };
+export type AuditFilters = { action?: string; q?: string; year?: number; category?: AuditCategory };
+
+/** Query string dos filtros da auditoria (lista e exportação CSV). */
+export function auditQuery(filters?: AuditFilters): URLSearchParams {
+  const sp = new URLSearchParams();
+  if (filters?.action) sp.set("action", filters.action);
+  if (filters?.q) sp.set("q", filters.q);
+  if (filters?.year) sp.set("year", String(filters.year));
+  if (filters?.category) sp.set("category", filters.category);
+  return sp;
+}
 
 export function useAudit(filters?: AuditFilters) {
   return useInfiniteQuery({
     queryKey: [api.admin.audit.path, filters ?? {}],
     initialPageParam: undefined as number | undefined,
     queryFn: ({ pageParam }) => {
-      const sp = new URLSearchParams();
-      sp.set("limit", "30");
+      const sp = auditQuery(filters);
+      sp.set("limit", "40");
       if (pageParam) sp.set("cursor", String(pageParam));
-      if (filters?.action) sp.set("action", filters.action);
-      if (filters?.q) sp.set("q", filters.q);
       return getJson<AuditListResponse>(`${api.admin.audit.path}?${sp.toString()}`);
     },
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     staleTime: 15_000,
+  });
+}
+
+export function useAuditFacets(year?: number) {
+  return useQuery({
+    queryKey: [api.admin.auditFacets.path, year ?? "active"],
+    queryFn: () => getJson<AuditFacets>(`${api.admin.auditFacets.path}${year ? `?year=${year}` : ""}`),
+    staleTime: 30_000,
+  });
+}
+
+// ───────────────────────── anos lectivos (histórico) ─────────────────────────
+export function useSchoolYears() {
+  return useQuery({
+    queryKey: [api.admin.yearsList.path],
+    queryFn: () => getJson<SchoolYearRow[]>(api.admin.yearsList.path),
+    staleTime: 30_000,
+  });
+}
+
+export function useSchoolYear(year?: number) {
+  return useQuery({
+    queryKey: [api.admin.yearDetail.path, year],
+    queryFn: () => getJson<SchoolYearDetail>(buildUrl(api.admin.yearDetail.path, { year: year! })),
+    enabled: !!year,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateSchoolYear() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { year: number; notes?: string }) =>
+      send<SchoolYearRow>("POST", api.admin.yearCreate.path, input),
+    // Ano novo → painel, recibos, pendentes, auditoria e extratos recomeçam: recarrega tudo.
+    onSuccess: () => qc.invalidateQueries(),
   });
 }
 

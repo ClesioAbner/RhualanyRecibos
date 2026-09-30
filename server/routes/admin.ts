@@ -10,6 +10,8 @@ import { hashPassword } from "../auth/passwords";
 import { issueResetToken } from "../auth/resetTokens";
 import { sendPasswordResetEmail } from "../auth/mailer";
 import { isTotpEnabled, type User } from "@shared/schema";
+import { auditActionLabel } from "@shared/audit";
+import { getSchoolYearDetail, listSchoolYears, openSchoolYear, schoolYearRow, YearError } from "../years";
 
 const idOf = (req: Request) => Number(req.params.id);
 
@@ -188,7 +190,7 @@ function addFooters(doc: any, generated: string) {
   }
 }
 
-const code = (n: number) => `RH-${String(n).padStart(4, "0")}`;
+const code = (n: number, year?: number | null) => `RH-${String(n).padStart(4, "0")}${year ? `/${year}` : ""}`;
 const pctOf = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "0%");
 
 // ── 1) PAGAMENTOS DO MÊS ──
@@ -394,7 +396,7 @@ async function buildStudentStatementPdf(
     y = sectionTitle(doc, y, monthFull(m));
     const rows = byMonth.get(m)!.map((r) => [
       fmtDate(r.issueDate),
-      code(r.receiptNumber),
+      code(r.receiptNumber, r.schoolYear),
       r.receiptType,
       r.paymentDescription,
       r.paymentMethod,
@@ -490,6 +492,12 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ───────────────────────────── audit log ─────────────────────────────
+  // Registada antes de /api/admin/audit para não ser apanhada por outra rota.
+  app.get(api.admin.auditFacets.path, requireAdmin, async (req, res) => {
+    const year = Number(req.query.year);
+    res.json(await storage.auditFacets(Number.isInteger(year) && year > 2000 ? year : undefined));
+  });
+
   app.get(api.admin.audit.path, requireAdmin, async (req, res) => {
     const parsed = api.admin.audit.input?.safeParse(req.query);
     const f = parsed?.success ? parsed.data : undefined;
@@ -499,6 +507,8 @@ export function registerAdminRoutes(app: Express): void {
       cursorId: f?.cursor,
       action: f?.action,
       q: f?.q,
+      year: f?.year,
+      category: f?.category,
     });
     const hasMore = items.length > limit;
     const page = hasMore ? items.slice(0, limit) : items;
@@ -520,15 +530,22 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/api/admin/audit/export", requireAdmin, async (req, res) => {
     const parsed = api.admin.audit.input?.safeParse(req.query);
     const f = parsed?.success ? parsed.data : undefined;
-    const rows = await storage.listAudit({ limit: 5000, action: f?.action, q: f?.q });
+    const rows = await storage.listAudit({
+      limit: 5000,
+      action: f?.action,
+      q: f?.q,
+      year: f?.year,
+      category: f?.category,
+    });
     const esc = (s: any) => `"${String(s ?? "").replace(/"/g, '""')}"`;
-    const lines: string[] = ["Colégio Rhulany — Registo de Auditoria"];
-    lines.push(["Quando", "Quem", "Acção", "Tipo de alvo", "ID alvo", "Detalhes"].map(esc).join(";"));
+    const lines: string[] = [`Colégio Rhulany — Registo de Auditoria${f?.year ? ` ${f.year}` : ""}`];
+    lines.push(["Quando", "Quem", "Acção", "Código", "Tipo de alvo", "ID alvo", "Detalhes"].map(esc).join(";"));
     for (const a of rows) {
       lines.push(
         [
           new Date(a.createdAt).toLocaleString("pt-PT"),
           a.actorEmail ?? "",
+          auditActionLabel(a.action),
           a.action,
           a.targetType ?? "",
           a.targetId ?? "",
@@ -589,7 +606,7 @@ export function registerAdminRoutes(app: Express): void {
         if (live) sub += Number(r.amountPaid) || 0;
         lines.push(
           [
-            `RH-${String(r.receiptNumber).padStart(4, "0")}`,
+            code(r.receiptNumber, r.schoolYear),
             fmtDate(r.issueDate),
             r.studentName,
             r.studentClass,
@@ -692,6 +709,36 @@ export function registerAdminRoutes(app: Express): void {
       res.json({ ok: true });
     } catch (err) {
       if (err instanceof z.ZodError) return sendValidationError(res, err);
+      throw err;
+    }
+  });
+
+  // ───────────────────────── anos lectivos (histórico) ─────────────────────────
+  app.get(api.admin.yearsList.path, requireAdmin, async (_req, res) => {
+    res.json(await listSchoolYears());
+  });
+
+  app.get(api.admin.yearDetail.path, requireAdmin, async (req, res) => {
+    const year = Number(req.params.year);
+    if (!Number.isInteger(year)) return res.status(404).json({ message: "Ano lectivo não encontrado" });
+    const detail = await getSchoolYearDetail(year);
+    if (!detail) return res.status(404).json({ message: "Ano lectivo não encontrado" });
+    res.json(detail);
+  });
+
+  app.post(api.admin.yearCreate.path, requireAdmin, async (req, res) => {
+    const parsed = api.admin.yearCreate.input.safeParse(req.body);
+    if (!parsed.success) return sendValidationError(res, parsed.error);
+    try {
+      const actor = (req.user as User).email;
+      const { opened, closed } = await openSchoolYear(parsed.data.year, actor, parsed.data.notes);
+      if (closed) {
+        audit(req, "year.closed", { targetType: "year", targetId: closed.year, metadata: { year: closed.year } });
+      }
+      audit(req, "year.opened", { targetType: "year", targetId: opened.year, metadata: { year: opened.year, notes: opened.notes } });
+      res.status(201).json(await schoolYearRow(opened));
+    } catch (err) {
+      if (err instanceof YearError) return res.status(400).json({ message: err.message });
       throw err;
     }
   });

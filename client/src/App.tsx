@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { useMe } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 // Páginas do site da secretaria
@@ -28,6 +29,7 @@ import AdminUtilizadores from "@/pages/admin/Utilizadores";
 import UtilizadorDetalhe from "@/pages/admin/UtilizadorDetalhe";
 import AdminExtratos from "@/pages/admin/Extratos";
 import AdminAuditLog from "@/pages/admin/AuditLog";
+import AdminHistorico from "@/pages/admin/Historico";
 
 function AuthSpinner() {
   return (
@@ -122,6 +124,9 @@ function Router() {
       <Route path="/admin/audit">
         {() => <AdminRoute component={AdminAuditLog} />}
       </Route>
+      <Route path="/admin/historico">
+        {() => <AdminRoute component={AdminHistorico} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -131,8 +136,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <ConfirmProvider>
+          <Toaster />
+          <Router />
+        </ConfirmProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

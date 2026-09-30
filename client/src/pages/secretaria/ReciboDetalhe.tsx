@@ -14,7 +14,8 @@ import type { UpdateReceiptRequest } from "@shared/schema";
 import { api } from "@shared/routes";
 import { NAVY, MUTED, LINE } from "@/lib/theme";
 
-const receiptCode = (n?: number) => (n != null ? `RH-${String(n).padStart(4, "0")}` : "Recibo");
+const receiptCode = (n?: number, year?: number | null) =>
+  n != null ? `RH-${String(n).padStart(4, "0")}${year ? `/${year}` : ""}` : "Recibo";
 
 export default function ReciboDetalhe() {
   const { toast } = useToast();
@@ -89,7 +90,7 @@ export default function ReciboDetalhe() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 22, fontWeight: 700, color: NAVY }}>
-              {receiptCode(receipt.data?.receiptNumber)}
+              {receiptCode(receipt.data?.receiptNumber, receipt.data?.schoolYear)}
             </h1>
             <p className="text-[12.5px] mt-0.5" style={{ color: MUTED }}>Reveja, ajuste e gere o PDF do recibo.</p>
           </div>
@@ -155,7 +156,7 @@ export default function ReciboDetalhe() {
       <Dialog open={delOpen} onOpenChange={(o) => { setDelOpen(o); if (!o) setReason(""); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Apagar {receiptCode(receipt.data?.receiptNumber)}</DialogTitle>
+            <DialogTitle>Apagar {receiptCode(receipt.data?.receiptNumber, receipt.data?.schoolYear)}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-1">
             <p className="text-[13px]" style={{ color: MUTED }}>

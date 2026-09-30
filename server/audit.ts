@@ -10,9 +10,15 @@ import type { User } from "@shared/schema";
 export function audit(
   req: Request,
   action: string,
-  opts?: { targetType?: string; targetId?: string | number; metadata?: unknown },
+  opts?: {
+    targetType?: string;
+    targetId?: string | number;
+    metadata?: unknown;
+    /** Quem agiu, quando ainda não há sessão (ex.: login falhado). */
+    actor?: Pick<User, "id" | "email"> | { id?: null; email: string };
+  },
 ): void {
-  const actor = req.user as User | undefined;
+  const actor = (opts?.actor ?? req.user) as Partial<User> | undefined;
   storage
     .writeAudit({
       action,

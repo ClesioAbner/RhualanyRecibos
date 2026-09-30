@@ -101,7 +101,7 @@ function receiptBlock(doc: any, r: any, startY: number): void {
   /* ── info bar ─────────────────────────────────────────── 20pt */
   doc.rect(mx, y, W, 20).fillColor("#f2f5fb").fill();
 
-  const numFmt = String(r.receiptNumber ?? "—").padStart(4, "0");
+  const numFmt = `${String(r.receiptNumber ?? "—").padStart(4, "0")}${r.schoolYear ? `/${r.schoolYear}` : ""}`;
   const dateStr = (() => {
     if (!r.issueDate) return new Date().toLocaleDateString("pt-PT");
     const d = typeof r.issueDate === "string" ? new Date(r.issueDate) : r.issueDate;

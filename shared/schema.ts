@@ -172,7 +172,9 @@ export const receipts = pgTable(
   "receipts",
   {
     id: serial("id").primaryKey(),
-    receiptNumber: integer("receipt_number").notNull().unique(),
+    // Numeração por ano lectivo: (school_year, receipt_number) é único.
+    receiptNumber: integer("receipt_number").notNull(),
+    schoolYear: integer("school_year"),
     issueDate: date("issue_date").notNull(),
     secretaryName: text("secretary_name").notNull(),
 
@@ -210,12 +212,14 @@ export const receipts = pgTable(
     issueDateIdx: index("receipts_issue_date_idx").on(t.issueDate),
     typeMonthIdx: index("receipts_type_month_idx").on(t.receiptType, t.referenceMonth),
     deletedAtIdx: index("receipts_deleted_at_idx").on(t.deletedAt),
+    yearNumberUnique: uniqueIndex("receipts_year_number_unique").on(t.schoolYear, t.receiptNumber),
   }),
 );
 
 export const insertReceiptSchema = createInsertSchema(receipts).omit({
   id: true,
   receiptNumber: true,
+  schoolYear: true,
   issueDate: true,
   createdByUserId: true,
   updatedByUserId: true,
@@ -257,6 +261,7 @@ export const auditLog = pgTable("audit_log", {
   ip: varchar("ip"),
   userAgent: text("user_agent"),
   metadata: jsonb("metadata"),
+  schoolYear: integer("school_year"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -278,9 +283,36 @@ export const statements = pgTable("statements", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   deletedByUserId: integer("deleted_by_user_id").references(() => users.id, { onDelete: "set null" }),
   deleteReason: text("delete_reason"),
+  schoolYear: integer("school_year"),
 });
 
 export type StatementRow = typeof statements.$inferSelect;
+
+// ─────────────────────── anos lectivos (histórico) ───────────────────────
+// Um único ano "active" de cada vez. Ao abrir um ano novo, o anterior é fechado
+// e fica com um retrato (snapshot) das turmas e alunos nesse momento — os
+// recibos e a auditoria continuam na BD e são filtrados pela data.
+export type SchoolYearStatus = "active" | "closed";
+
+export const schoolYears = pgTable(
+  "school_years",
+  {
+    id: serial("id").primaryKey(),
+    year: integer("year").notNull().unique(),
+    status: varchar("status").$type<SchoolYearStatus>().notNull().default("active"),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    openedByEmail: text("opened_by_email"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedByEmail: text("closed_by_email"),
+    snapshot: jsonb("snapshot"),
+    notes: text("notes"),
+  },
+  (t) => ({
+    oneActiveIdx: uniqueIndex("school_years_one_active_idx").on(t.status).where(sql`status = 'active'`),
+  }),
+);
+
+export type SchoolYear = typeof schoolYears.$inferSelect;
 
 export type SettingsKey = "secretaryName";
 export type SettingsResponse = {

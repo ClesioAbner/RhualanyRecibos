@@ -114,7 +114,7 @@ export default function Home() {
                 <tbody>
                   {stats.recent.map((r) => (
                     <tr key={r.id} className="border-t transition-colors hover:bg-[#f7fafd]" style={{ borderColor: "#f3f5f8" }}>
-                      <td className="px-6 py-3 font-semibold tabular-nums" style={{ color: NAVY }}>{receiptCode(r.receiptNumber)}</td>
+                      <td className="px-6 py-3 font-semibold tabular-nums" style={{ color: NAVY }}>{receiptCode(r.receiptNumber, r.schoolYear)}</td>
                       <td className="px-3 py-3 font-medium" style={{ color: INK }}>{r.studentName}</td>
                       <td className="px-3 py-3" style={{ color: MUTED }}>{formatTurma(r.studentClass)}</td>
                       <td className="px-3 py-3" style={{ color: MUTED }}>{fmtDate(r.issueDate)}</td>

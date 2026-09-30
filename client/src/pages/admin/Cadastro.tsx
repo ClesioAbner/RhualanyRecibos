@@ -10,6 +10,8 @@ import {
   useDeleteStudent,
 } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm, useSuccess } from "@/components/ConfirmDialog";
+import { studentChanges } from "@/lib/changes";
 import { C } from "@/lib/adminColors";
 import { classLabel } from "@/lib/turma";
 import { formatMt } from "@/lib/format";
@@ -34,6 +36,8 @@ const EMPTY: FormState = { classId: "", fullName: "", internalNumber: "", birthd
 export default function AdminCadastro() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const success = useSuccess();
   const { data: classes } = useClasses();
   const [q, setQ] = useState("");
   const { data: students, isLoading, error } = useStudents(q.trim() ? { q: q.trim() } : undefined);
@@ -86,10 +90,18 @@ export default function AdminCadastro() {
       monthlyFeeOverride: form.monthlyFeeOverride.trim() ? Number(form.monthlyFeeOverride) : undefined,
       active: form.active,
     };
+    if (editing) {
+      const ok = await confirm({
+        title: "Deseja mesmo guardar as alterações?",
+        description: <>Os dados de <strong>{editing.fullName}</strong> serão actualizados.</>,
+        details: studentChanges(editing, payload, classes ?? []),
+      });
+      if (!ok) return;
+    }
     try {
       if (editing) {
         await updateM.mutateAsync({ id: editing.id, updates: payload });
-        toast({ title: "Aluno actualizado" });
+        success("Actualizado com sucesso");
       } else {
         await createM.mutateAsync(payload);
         toast({ title: "Aluno criado" });
@@ -101,13 +113,20 @@ export default function AdminCadastro() {
   };
 
   const remove = async (s: StudentRow) => {
-    const ok = window.confirm(
-      `Apagar o aluno "${s.fullName}"?\n\nOs encarregados deste aluno também serão removidos. Os recibos antigos ficam preservados (o nome e a turma ficam guardados no recibo).\n\nEsta operação é PERMANENTE. Continuar?`,
-    );
+    const ok = await confirm({
+      tone: "danger",
+      title: "Deseja mesmo apagar este aluno?",
+      description: <>Vai apagar <strong>{s.fullName}</strong> de forma permanente.</>,
+      details: [
+        "Os encarregados deste aluno também serão removidos.",
+        "Os recibos antigos ficam preservados (nome e turma guardados no recibo).",
+        "Esta operação não pode ser desfeita.",
+      ],
+    });
     if (!ok) return;
     try {
       await deleteM.mutateAsync(s.id);
-      toast({ title: "Aluno apagado" });
+      success("Apagado com sucesso", "O aluno foi apagado.");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }

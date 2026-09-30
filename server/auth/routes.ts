@@ -73,9 +73,11 @@ export function registerAuthRoutes(app: Express): void {
     if (!parsed.success) {
       return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
     }
+    const attemptedEmail = parsed.data.email.toLowerCase();
     passport.authenticate("local", (err: unknown, user: User | false) => {
       if (err) return next(err);
       if (!user) {
+        audit(req, "user.login_failed", { actor: { email: attemptedEmail } });
         return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
       }
       // First factor passed. If 2FA is on, defer the real login: only stash a
@@ -86,6 +88,7 @@ export function registerAuthRoutes(app: Express): void {
       }
       establishAuthenticatedSession(req, user, (sessErr) => {
         if (sessErr) return next(sessErr);
+        audit(req, "user.login", { targetType: "user", targetId: user.id });
         return res.json({ user: toPublicUser(user) });
       });
     })(req, res, next);
@@ -127,18 +130,22 @@ export function registerAuthRoutes(app: Express): void {
     }
 
     if (!ok) {
+      audit(req, "user.login_failed", { actor: user, metadata: { step: "2fa" } });
       return res.status(401).json({ message: "Código inválido" });
     }
 
     // regenerate() below wipes the pending marker along with the old session.
     establishAuthenticatedSession(req, user, (sessErr) => {
       if (sessErr) return next(sessErr);
+      audit(req, "user.login", { targetType: "user", targetId: user.id, metadata: { twoFactor: true } });
       return res.json({ user: toPublicUser(user) });
     });
   });
 
   // ──────────────────────────────── logout ────────────────────────────────
   app.post(api.auth.logout.path, (req, res, next) => {
+    const leaving = req.user as User | undefined;
+    if (leaving) audit(req, "user.logout", { targetType: "user", targetId: leaving.id });
     req.logout((err) => {
       if (err) return next(err);
       req.session.destroy(() => {
@@ -176,7 +183,10 @@ export function registerAuthRoutes(app: Express): void {
       return res.status(400).json({ message: "Link inválido ou expirado. Peça um novo." });
     }
     const passwordHash = await hashPassword(parsed.data.password);
-    await storage.updateUser(userId, { passwordHash });
+    const target = await storage.updateUser(userId, { passwordHash });
+    if (target) {
+      audit(req, "user.password_reset_completed", { actor: target, targetType: "user", targetId: userId });
+    }
     return res.status(204).send();
   });
 
@@ -210,6 +220,7 @@ export function registerAuthRoutes(app: Express): void {
       totpEnabledAt: new Date(),
       totpRecoveryHashes: hashes,
     });
+    audit(req, "user.2fa_enabled", { targetType: "user", targetId: user.id });
     return res.json({ recoveryCodes: codes });
   });
 
@@ -241,6 +252,7 @@ export function registerAuthRoutes(app: Express): void {
       totpSecret: null,
       totpRecoveryHashes: null,
     });
+    audit(req, "user.2fa_disabled", { targetType: "user", targetId: user.id });
     return res.status(204).send();
   });
 

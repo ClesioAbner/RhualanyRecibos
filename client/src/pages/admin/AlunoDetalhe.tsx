@@ -14,6 +14,8 @@ import {
   useAdminReceipts,
 } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm, useSuccess } from "@/components/ConfirmDialog";
+import { studentChanges } from "@/lib/changes";
 import { C } from "@/lib/adminColors";
 import { formatMt, formatDate, receiptCode } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,8 @@ const initials = (n: string) => n.split(" ").slice(0, 2).map((w) => w[0]).join("
 export default function AlunoDetalhe({ id }: { id: string }) {
   const studentId = Number(id);
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const success = useSuccess();
   const { data: student, isLoading } = useStudent(studentId);
   const { data: classes } = useClasses();
   const { data: guardians } = useGuardians(studentId);
@@ -87,28 +91,43 @@ export default function AlunoDetalhe({ id }: { id: string }) {
   const feeBadge = student.monthlyFeeOverride != null ? "(próprio)" : "(da turma)";
 
   const toggleActive = async () => {
-    const ok = window.confirm(
+    const ok = await confirm(
       student.active
-        ? `Desactivar o aluno "${student.fullName}"? Deixa de aparecer nas listas activas e nos pendentes. Continuar?`
-        : `Reactivar o aluno "${student.fullName}"?`,
+        ? {
+            tone: "danger",
+            title: "Deseja mesmo desactivar este aluno?",
+            description: <><strong>{student.fullName}</strong> deixa de aparecer nas listas activas e nos pendentes.</>,
+            details: ["Os dados e recibos mantêm-se.", "Pode reactivar o aluno a qualquer momento."],
+          }
+        : {
+            title: "Deseja mesmo reactivar este aluno?",
+            description: <><strong>{student.fullName}</strong> volta a aparecer nas listas activas e nos pendentes.</>,
+          },
     );
     if (!ok) return;
     try {
       await updateStudent.mutateAsync({ id: student.id, updates: { active: !student.active } });
-      toast({ title: student.active ? "Aluno desactivado" : "Aluno reactivado" });
+      success(student.active ? "Desactivado com sucesso" : "Reactivado com sucesso");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }
   };
 
   const remove = async () => {
-    const ok = window.confirm(
-      `Apagar o aluno "${student.fullName}"?\n\nOs encarregados também serão removidos. Os recibos antigos ficam preservados.\n\nEsta operação é PERMANENTE. Continuar?`,
-    );
+    const ok = await confirm({
+      tone: "danger",
+      title: "Deseja mesmo apagar este aluno?",
+      description: <>Vai apagar <strong>{student.fullName}</strong> de forma permanente.</>,
+      details: [
+        "Os encarregados deste aluno também serão removidos.",
+        "Os recibos antigos ficam preservados (nome e turma guardados no recibo).",
+        "Esta operação não pode ser desfeita.",
+      ],
+    });
     if (!ok) return;
     try {
       await deleteStudent.mutateAsync(student.id);
-      toast({ title: "Aluno apagado" });
+      success("Apagado com sucesso", "O aluno foi apagado.");
       navigate("/admin/cadastro");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
@@ -244,7 +263,7 @@ export default function AlunoDetalhe({ id }: { id: string }) {
                   >
                     <div className="min-w-0">
                       <p className="text-[13px] font-semibold" style={{ color: C.textPrimary }}>
-                        {receiptCode(r.receiptNumber)}
+                        {receiptCode(r.receiptNumber, r.schoolYear)}
                         {r.deletedAt && <span className="ml-2 text-[10px] font-bold" style={{ color: C.textMuted }}>ANULADO</span>}
                       </p>
                       <p className="text-[11px]" style={{ color: C.textMuted }}>{formatDate(r.issueDate)} · {r.paymentDescription}</p>
@@ -289,6 +308,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 // ── student edit modal ──
 function StudentEditModal({ student, onClose }: { student: StudentRow; onClose: () => void }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const success = useSuccess();
   const { data: classes } = useClasses();
   const updateM = useUpdateStudent();
   const [form, setForm] = useState({
@@ -300,18 +321,22 @@ function StudentEditModal({ student, onClose }: { student: StudentRow; onClose: 
   });
 
   const submit = async () => {
+    const updates = {
+      classId: Number(form.classId),
+      fullName: form.fullName.trim(),
+      internalNumber: form.internalNumber.trim() || undefined,
+      birthdate: form.birthdate.trim() || undefined,
+      monthlyFeeOverride: form.monthlyFeeOverride.trim() ? Number(form.monthlyFeeOverride) : undefined,
+    };
+    const ok = await confirm({
+      title: "Deseja mesmo guardar as alterações?",
+      description: <>Os dados de <strong>{student.fullName}</strong> serão actualizados.</>,
+      details: studentChanges(student, updates, classes ?? []),
+    });
+    if (!ok) return;
     try {
-      await updateM.mutateAsync({
-        id: student.id,
-        updates: {
-          classId: Number(form.classId),
-          fullName: form.fullName.trim(),
-          internalNumber: form.internalNumber.trim() || undefined,
-          birthdate: form.birthdate.trim() || undefined,
-          monthlyFeeOverride: form.monthlyFeeOverride.trim() ? Number(form.monthlyFeeOverride) : undefined,
-        },
-      });
-      toast({ title: "Aluno actualizado" });
+      await updateM.mutateAsync({ id: student.id, updates });
+      success("Actualizado com sucesso");
       onClose();
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
@@ -367,6 +392,8 @@ function StudentEditModal({ student, onClose }: { student: StudentRow; onClose: 
 // ── guardian modal ──
 function GuardianModal({ studentId, guardian, onClose }: { studentId: number; guardian: GuardianRow | null; onClose: () => void }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const success = useSuccess();
   const createM = useCreateGuardian();
   const updateM = useUpdateGuardian();
   const deleteM = useDeleteGuardian();
@@ -386,10 +413,17 @@ function GuardianModal({ studentId, guardian, onClose }: { studentId: number; gu
       email: form.email.trim() || undefined,
       isPrimary: form.isPrimary,
     };
+    if (guardian) {
+      const ok = await confirm({
+        title: "Deseja mesmo guardar as alterações?",
+        description: <>Os dados de <strong>{guardian.fullName}</strong> serão actualizados.</>,
+      });
+      if (!ok) return;
+    }
     try {
       if (guardian) {
         await updateM.mutateAsync({ id: guardian.id, studentId, updates: input });
-        toast({ title: "Encarregado actualizado" });
+        success("Actualizado com sucesso");
       } else {
         await createM.mutateAsync({ studentId, input });
         toast({ title: "Encarregado adicionado" });
@@ -401,10 +435,16 @@ function GuardianModal({ studentId, guardian, onClose }: { studentId: number; gu
   };
 
   const remove = async () => {
-    if (!guardian || !window.confirm(`Remover ${guardian.fullName}?`)) return;
+    if (!guardian) return;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Deseja mesmo remover este encarregado?",
+      description: <><strong>{guardian.fullName}</strong> deixa de estar associado a este aluno.</>,
+    });
+    if (!ok) return;
     try {
       await deleteM.mutateAsync({ id: guardian.id, studentId });
-      toast({ title: "Encarregado removido" });
+      success("Removido com sucesso", "O encarregado foi removido.");
       onClose();
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });

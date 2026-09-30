@@ -7,6 +7,7 @@ import {
   guardians,
 } from "./schema";
 import { createInsertSchema } from "drizzle-zod";
+import { AUDIT_CATEGORY_KEYS, type AuditCategory } from "./audit";
 
 export const errorSchemas = {
   validation: z.object({
@@ -168,6 +169,59 @@ export const auditEntrySchema = z.object({
   targetId: z.string().nullable(),
   metadata: z.any().nullable(),
   createdAt: z.string(),
+});
+
+// ── anos lectivos ──
+const yearTotalsSchema = z.object({
+  receipts: z.number(),
+  revenue: z.number(),
+  voided: z.number(),
+  payingStudents: z.number(),
+  auditEvents: z.number(),
+  statements: z.number(),
+});
+
+export const schoolYearSchema = z.object({
+  id: z.number(),
+  year: z.number(),
+  status: z.enum(["active", "closed"]),
+  openedAt: z.string(),
+  openedByEmail: z.string().nullable(),
+  closedAt: z.string().nullable(),
+  closedByEmail: z.string().nullable(),
+  notes: z.string().nullable(),
+  totals: yearTotalsSchema,
+});
+
+const rosterStudentSchema = z.object({
+  id: z.number(),
+  fullName: z.string(),
+  internalNumber: z.string().nullable(),
+  active: z.boolean(),
+  paid: z.number(),
+  receipts: z.number(),
+});
+
+const rosterClassSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  level: z.string(),
+  monthlyFee: z.number(),
+  active: z.boolean(),
+  students: z.array(rosterStudentSchema),
+});
+
+export const schoolYearDetailSchema = schoolYearSchema.extend({
+  byMonth: z.array(z.object({ month: z.string(), count: z.number(), total: z.number() })),
+  byMethod: z.array(z.object({ method: z.string(), count: z.number(), total: z.number() })),
+  byType: z.array(z.object({ type: z.string(), count: z.number(), total: z.number() })),
+  byClass: z.array(z.object({ name: z.string(), count: z.number(), total: z.number() })),
+  /** Turmas e alunos: retrato guardado ao fechar o ano, ou os dados actuais se o ano está em curso. */
+  roster: z.object({
+    source: z.enum(["snapshot", "live"]),
+    takenAt: z.string().nullable(),
+    classes: z.array(rosterClassSchema),
+  }),
 });
 
 export const pendingPaymentSchema = z.object({
@@ -533,8 +587,7 @@ export const api = {
               count: z.number(),
             }),
           ),
-          revenueByMonth: z.array(z.object({ month: z.string(), total: z.number() })),
-          receiptsByType: z.array(
+          revenueByMonth: z.array(z.object({ month: z.string(), total: z.number() })),          receiptsByType: z.array(
             z.object({ type: z.string(), count: z.number(), total: z.number() }),
           ),
           paymentsByMethod: z.array(
@@ -589,6 +642,8 @@ export const api = {
           cursor: z.coerce.number().int().positive().optional(),
           action: z.string().optional(),
           q: z.string().optional(),
+          year: z.coerce.number().int().min(2000).max(2100).optional(),
+          category: z.enum(AUDIT_CATEGORY_KEYS as [AuditCategory, ...AuditCategory[]]).optional(),
         })
         .optional(),
       responses: {
@@ -597,6 +652,37 @@ export const api = {
           nextCursor: z.number().nullable(),
         }),
       },
+    },
+    auditFacets: {
+      method: "GET" as const,
+      path: "/api/admin/audit/facets",
+      responses: {
+        200: z.object({
+          actions: z.array(z.object({ action: z.string(), count: z.number() })),
+          years: z.array(z.number()),
+        }),
+      },
+    },
+
+    // ── anos lectivos (histórico) ──
+    yearsList: {
+      method: "GET" as const,
+      path: "/api/admin/years",
+      responses: { 200: z.array(schoolYearSchema) },
+    },
+    yearDetail: {
+      method: "GET" as const,
+      path: "/api/admin/years/:year",
+      responses: { 200: schoolYearDetailSchema, 404: errorSchemas.notFound },
+    },
+    yearCreate: {
+      method: "POST" as const,
+      path: "/api/admin/years",
+      input: z.object({
+        year: z.number().int().min(2000).max(2100),
+        notes: z.string().trim().max(500).optional(),
+      }),
+      responses: { 201: schoolYearSchema, 400: errorSchemas.validation },
     },
 
     recibosList: {
@@ -728,3 +814,6 @@ export type UserUpdateInput = z.infer<typeof userUpdateInput>;
 export type Role = z.infer<typeof roleSchema>;
 export type AuditListResponse = z.infer<typeof api.admin.audit.responses[200]>;
 export type StatementMeta = z.infer<typeof statementMetaSchema>;
+export type AuditFacets = z.infer<typeof api.admin.auditFacets.responses[200]>;
+export type SchoolYearRow = z.infer<typeof schoolYearSchema>;
+export type SchoolYearDetail = z.infer<typeof schoolYearDetailSchema>;

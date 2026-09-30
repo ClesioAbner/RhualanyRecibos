@@ -17,7 +17,10 @@ import {
   X,
   ArrowLeft,
   UserCircle,
+  Archive,
+  CalendarDays,
 } from "lucide-react";
+import { useSchoolYears } from "@/hooks/use-admin";
 
 interface AdminShellProps {
   title: string;
@@ -36,6 +39,7 @@ const NAV = [
   { href: "/admin/utilizadores", label: "Utilizadores", icon: UserCog },
   { href: "/admin/extratos", label: "Extratos", icon: BarChart3 },
   { href: "/admin/audit", label: "Auditoria", icon: History },
+  { href: "/admin/historico", label: "Histórico", icon: Archive },
 ];
 
 
@@ -46,6 +50,8 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
   const [drawer, setDrawer] = useState(false);
   const updateAvatar = useUpdateAvatar();
   const { toast } = useToast();
+  const { data: years } = useSchoolYears();
+  const activeYear = years?.find((y) => y.status === "active")?.year;
 
   useEffect(() => setDrawer(false), [location]);
   // Sem modo escuro na administração — garante tema claro.
@@ -92,7 +98,7 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
         <AvatarEditable
           name={name}
           src={me?.avatarUrl}
-          size={78}
+          size={64}
           onPick={pickAvatar}
           onError={(m) => toast({ title: "Erro", description: m, variant: "destructive" })}
         />
@@ -152,7 +158,15 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
             <h1 className="ash-title" data-testid="admin-page-title">{title}</h1>
             {subtitle && <p className="ash-subtitle">{subtitle}</p>}
           </div>
-          {actions && <div className="ash-actions">{actions}</div>}
+          <div className="ash-actions">
+            {actions}
+            {activeYear && (
+              <Link href="/admin/historico" className="ash-year" title="Ano lectivo em curso — ver histórico" data-testid="admin-ano-lectivo">
+                <CalendarDays size={14} aria-hidden="true" />
+                <span>Ano lectivo <strong>{activeYear}</strong></span>
+              </Link>
+            )}
+          </div>
         </header>
 
         <main className="ash-content">{children}</main>
@@ -160,11 +174,14 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
 
       <style>{`
         .ash-root { min-height: 100vh; display: flex; background: ${C.bg}; }
+        /* Área de administração: rola normalmente, mas sem barra de scroll visível. */
+        html, body { scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 
         /* ── SIDEBAR ── */
         .ash-side {
           width: 240px; height: 100vh; position: sticky; top: 0; flex-shrink: 0;
-          display: flex; flex-direction: column;
+          display: flex; flex-direction: column; overflow: hidden;
           background: #14233f;
           color: #c9d6ea;
           box-shadow: 4px 0 24px -14px rgba(0,0,0,0.45);
@@ -178,7 +195,7 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
 
         .ash-profile {
           display: flex; flex-direction: column; align-items: center; text-align: center;
-          gap: 2px; padding: 12px 16px 18px; margin: 4px 12px 6px;
+          gap: 2px; padding: 8px 16px 12px; margin: 2px 12px 4px; flex-shrink: 0;
           border-bottom: 1px solid rgba(255,255,255,0.08);
         }
         .ash-profile-name { font-size: 14px; font-weight: 800; color: #fff; margin: 8px 0 0; }
@@ -188,10 +205,17 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
           color: ${C.accent};
         }
 
-        .ash-nav { display: flex; flex-direction: column; gap: 2px; padding: 10px; margin-top: 4px; }
+        /* O menu encolhe/rola (sem barra visível) para o rodapé com
+           "Terminar sessão" ficar sempre visível, mesmo em ecrãs baixos. */
+        .ash-nav {
+          display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; margin-top: 2px;
+          flex: 1 1 auto; min-height: 0; overflow-y: auto;
+          scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .ash-nav::-webkit-scrollbar { display: none; }
         .ash-nav-item {
           display: flex; align-items: center; gap: 12px;
-          padding: 11px 16px; border-radius: 0 9px 9px 0;
+          padding: 9px 16px; border-radius: 0 9px 9px 0; flex-shrink: 0;
           font-size: 13.5px; font-weight: 600; color: #aebfd8; text-decoration: none;
           border-left: 3px solid transparent; transition: background .15s, color .15s, border-color .15s;
         }
@@ -202,17 +226,17 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
           border-left-color: ${C.accent};
         }
 
-        .ash-user { margin-top: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .ash-user { flex-shrink: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.08); }
         .ash-backsite {
           display: flex; align-items: center; gap: 9px; width: 100%;
-          padding: 10px 12px; border-radius: 9px; text-decoration: none;
+          padding: 8px 12px; border-radius: 9px; text-decoration: none;
           background: rgba(255,255,255,0.06); color: #cdddf2; font-size: 12.5px; font-weight: 600;
           border: 1px solid rgba(255,255,255,0.08); transition: background .15s, color .15s;
         }
         .ash-backsite:hover { background: rgba(255,255,255,0.12); color: #fff; }
         .ash-logout {
           display: flex; align-items: center; gap: 9px; width: 100%;
-          padding: 10px 12px; border-radius: 9px; border: none; cursor: pointer;
+          padding: 8px 12px; border-radius: 9px; border: none; cursor: pointer;
           background: transparent; color: #f0a8a8; font-size: 12.5px; font-weight: 600; font-family: inherit;
           transition: background .15s, color .15s;
         }
@@ -230,6 +254,15 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
         .ash-title { font-size: 24px; font-weight: 800; color: ${C.navy}; margin: 0; letter-spacing: -.025em; }
         .ash-subtitle { font-size: 12.5px; color: ${C.textSecondary}; margin: 3px 0 0; font-weight: 500; }
         .ash-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .ash-year {
+          display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+          border-radius: 999px; border: 1px solid ${C.cardBorder}; background: #f8fafc;
+          font-size: 12.5px; color: ${C.textSecondary}; text-decoration: none; white-space: nowrap;
+          transition: background .15s, border-color .15s;
+        }
+        .ash-year strong { color: ${C.navy}; }
+        .ash-year:hover { background: #eef3f9; border-color: #d6e2f0; }
+        @media (max-width: 640px) { .ash-year span { display: none; } }
 
         .ash-content { padding: 24px 32px; flex: 1; }
         @media (max-width: 640px) { .ash-header { padding: 16px; } .ash-content { padding: 16px; } }

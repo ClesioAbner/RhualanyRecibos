@@ -18,7 +18,6 @@ import {
   AreaChart,
   Area,
   CartesianGrid,
-  LabelList,
 } from "recharts";
 
 const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -32,18 +31,15 @@ const monthLabel = (m: string) => {
 const BLUE_RAMP = ["#0d2d5e", "#16467f", "#1e64ad", "#1597e5", "#4aa8ec", "#86c5f3", "#b9def8"];
 const blueAt = (i: number) => BLUE_RAMP[i % BLUE_RAMP.length];
 
-// ───────────────────────── KPI: sem ícones, sem badges ─────────────────────────
-function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent: string }) {
+// ───────────────────────── KPI: cartão limpo, sem faixas de cor ─────────────────────────
+function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <AdminCard noPadding>
-      <div style={{ height: 4, background: accent, borderTopLeftRadius: 14, borderTopRightRadius: 14 }} />
-      <div className="px-6 py-5">
-        <p style={{ fontFamily: "Georgia, serif", fontSize: 30, fontWeight: 700, color: C.navy, lineHeight: 1 }}>
-          {value}
-        </p>
-        <p className="text-[13px] font-semibold mt-2" style={{ color: C.textPrimary }}>{label}</p>
-        {sub && <p className="text-[11.5px] mt-0.5" style={{ color: C.textMuted }}>{sub}</p>}
-      </div>
+    <AdminCard>
+      <p className="text-[12.5px] font-medium" style={{ color: C.textSecondary }}>{label}</p>
+      <p className="mt-2 text-[26px] font-bold leading-none tracking-tight tabular-nums" style={{ color: C.textPrimary }}>
+        {value}
+      </p>
+      {sub && <p className="text-[11.5px] mt-2" style={{ color: C.textMuted }}>{sub}</p>}
     </AdminCard>
   );
 }
@@ -65,6 +61,39 @@ function Spinner() {
   );
 }
 
+// Tooltip do gráfico de turmas: cartão branco limpo, no estilo do resto do painel.
+function ClassTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload as { fullName: string; pagos: number; pendentes: number };
+  const total = row.pagos + row.pendentes;
+  return (
+    <div
+      className="rounded-xl bg-white px-3.5 py-2.5 text-[12px] min-w-[150px]"
+      style={{ border: `1px solid ${C.cardBorder}`, boxShadow: "0 10px 30px -10px rgba(13,45,94,0.25)" }}
+    >
+      <p className="font-semibold mb-1.5" style={{ color: C.textPrimary }}>{row.fullName}</p>
+      {CLASS_SERIES.map((s) => (
+        <p key={s.key} className="flex items-center justify-between gap-4 tabular-nums" style={{ color: C.textSecondary }}>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
+            {s.label}
+          </span>
+          <strong style={{ color: C.textPrimary }}>{row[s.key]}</strong>
+        </p>
+      ))}
+      <p className="flex justify-between gap-4 mt-1.5 pt-1.5 border-t tabular-nums" style={{ borderColor: C.cardBorder, color: C.textSecondary }}>
+        Total <strong style={{ color: C.navy }}>{total}</strong>
+      </p>
+    </div>
+  );
+}
+
+// Barras empilhadas por turma: pagos (navy) na base, pendentes (azul claro) por cima.
+const CLASS_SERIES = [
+  { key: "pagos", label: "Pagos", color: "#16467f" },
+  { key: "pendentes", label: "Pendentes", color: "#86c5f3" },
+] as const;
+
 export default function AdminDashboard() {
   const { data: me } = useMe();
   const { data: stats, isLoading, error } = useAdminStats();
@@ -79,15 +108,16 @@ export default function AdminDashboard() {
   );
   const methodsTotal = useMemo(() => methods.reduce((s, m) => s + m.total, 0), [methods]);
 
-  const topClasses = useMemo(
-    () =>
-      [...(stats?.studentsByClass ?? [])]
-        .filter((c) => c.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8)
-        .map((c) => ({ name: c.name, alunos: c.count })),
-    [stats],
-  );
+  // Todas as turmas (por ordem de nome), com os alunos activos divididos em
+  // mensalidade paga / pendente no mês corrente.
+  const classBars = useMemo(() => {
+    const pendingByClass = new Map<number, number>();
+    for (const p of pending ?? []) pendingByClass.set(p.classId, (pendingByClass.get(p.classId) ?? 0) + 1);
+    return (stats?.studentsByClass ?? []).map((c) => {
+      const pendentes = Math.min(pendingByClass.get(c.classId) ?? 0, c.count);
+      return { name: c.name.replace(/\s*Classe$/i, ""), fullName: c.name, pagos: c.count - pendentes, pendentes };
+    });
+  }, [stats, pending]);
   const areaData = useMemo(
     () => (stats?.revenueByMonth ?? []).map((m) => ({ mes: monthLabel(m.month), total: m.total })),
     [stats],
@@ -104,10 +134,10 @@ export default function AdminDashboard() {
         <div className="space-y-5">
           {/* ── KPIs ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Kpi label="Recibos este mês" value={String(stats.totals.receiptsThisMonth)} sub="mês corrente" accent="#1a3a6b" />
-            <Kpi label="Receita do mês" value={`${formatMt(stats.totals.revenueThisMonth)} MT`} sub="recebido este mês" accent="#1a3a6b" />
-            <Kpi label="Alunos activos" value={String(stats.totals.activeStudents)} sub={`${stats.totals.students} no total`} accent="#1a3a6b" />
-            <Kpi label="Mensalidades pendentes" value={String(pending?.length ?? 0)} sub="por liquidar este mês" accent="#1a3a6b" />
+            <Kpi label="Recibos este mês" value={String(stats.totals.receiptsThisMonth)} sub="mês corrente" />
+            <Kpi label="Receita do mês" value={`${formatMt(stats.totals.revenueThisMonth)} MT`} sub="recebido este mês" />
+            <Kpi label="Alunos activos" value={String(stats.totals.activeStudents)} sub={`${stats.totals.students} no total`} />
+            <Kpi label="Mensalidades pendentes" value={String(pending?.length ?? 0)} sub="por liquidar este mês" />
           </div>
 
           {/* ── meio: donut (métodos) + top turmas ── */}
@@ -158,29 +188,58 @@ export default function AdminDashboard() {
                 )}
             </AdminCard>
 
-            {/* top turmas */}
+            {/* alunos por turma — barras empilhadas (pagos / pendentes) sobre uma calha clara */}
             <AdminCard className="flex flex-col">
-                <CardTitle>Top turmas por alunos</CardTitle>
-                {topClasses.length === 0 ? (
-                  <p className="text-[13px] py-10 text-center flex-1" style={{ color: C.textMuted }}>Sem alunos em turmas.</p>
+                <div className="flex items-start justify-between gap-3">
+                  <CardTitle>Alunos por turma</CardTitle>
+                  <ul className="flex items-center gap-3 -mt-0.5">
+                    {CLASS_SERIES.map((s) => (
+                      <li key={s.key} className="flex items-center gap-1.5 text-[11.5px]" style={{ color: C.textSecondary }}>
+                        <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
+                        {s.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {classBars.length === 0 ? (
+                  <p className="text-[13px] py-10 text-center flex-1" style={{ color: C.textMuted }}>Sem turmas registadas.</p>
                 ) : (
                   <div className="flex-1" style={{ minHeight: 230 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topClasses} margin={{ left: 8, right: 8, top: 24, bottom: 4 }} barCategoryGap="34%">
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                      <BarChart data={classBars} margin={{ left: 0, right: 8, top: 8, bottom: 4 }} barCategoryGap="38%">
+                        <CartesianGrid vertical={false} stroke="#eef2f7" strokeDasharray="3 3" />
                         <XAxis
                           dataKey="name"
                           interval={0}
                           tick={{ fontSize: 11.5, fill: C.textSecondary, fontWeight: 600 }}
                           axisLine={false}
                           tickLine={false}
-                          dy={6}
+                          dy={8}
                         />
-                        <YAxis hide domain={[0, (max: number) => Math.ceil((max + 1) * 1.15)]} />
-                        <Tooltip cursor={{ fill: "#f5f8fc" }} />
-                        <Bar dataKey="alunos" fill="#1a3a6b" radius={[6, 6, 0, 0]} barSize={42} maxBarSize={48} isAnimationActive={false}>
-                          <LabelList dataKey="alunos" position="top" offset={8} style={{ fill: C.navy, fontSize: 13, fontWeight: 700 }} />
-                        </Bar>
+                        <YAxis
+                          allowDecimals={false}
+                          tick={{ fontSize: 11, fill: C.textMuted }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={32}
+                          domain={[0, (max: number) => Math.max(4, Math.ceil(max * 1.2))]}
+                        />
+                        <Tooltip cursor={false} content={<ClassTooltip />} />
+                        {CLASS_SERIES.map((s, i) => (
+                          <Bar
+                            key={s.key}
+                            dataKey={s.key}
+                            stackId="alunos"
+                            fill={s.color}
+                            stroke="#fff"
+                            strokeWidth={2}
+                            radius={[6, 6, 6, 6]}
+                            maxBarSize={28}
+                            // A calha clara (altura total) só na primeira série, para não se sobrepor.
+                            background={i === 0 ? ({ fill: "#eef3f9", radius: 6 } as any) : undefined}
+                            isAnimationActive={false}
+                          />
+                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

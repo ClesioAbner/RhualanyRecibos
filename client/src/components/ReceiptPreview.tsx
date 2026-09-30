@@ -33,7 +33,7 @@ function ReceiptBlock({
   testIdPrefix: string;
 }) {
   const num         = receipt.receiptNumber ?? "—";
-  const numFmt      = typeof num === "number" ? num.toString().padStart(4, "0") : num;
+  const numFmt      = `${typeof num === "number" ? num.toString().padStart(4, "0") : num}${receipt.schoolYear ? `/${receipt.schoolYear}` : ""}`;
   const issueDate   = fmtDate((receipt as any).issueDate);
   const secretary   = receipt.secretaryName ?? "—";
   const amount      = Number((receipt as any).amountPaid) || 0;

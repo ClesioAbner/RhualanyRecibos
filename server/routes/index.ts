@@ -9,12 +9,17 @@ import { registerSchoolRoutes, seedClasses } from "./school";
 import { registerAdminRoutes } from "./admin";
 import { sendValidationError } from "../validation";
 import { audit } from "../audit";
+import { ensureSchoolYears } from "../years";
 import { amountToWordsMt, buildPdfForReceipts } from "../pdf/receiptPdf";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Anos lectivos + coluna school_year: tem de existir antes de qualquer rota
+  // ler/escrever recibos, auditoria ou extratos.
+  await ensureSchoolYears().catch((err) => console.error("ensureSchoolYears failed:", err));
+
   // Session + Passport must be wired before any route reads req.user.
   setupAuth(app);
 
@@ -58,6 +63,7 @@ export async function registerRoutes(
     try {
       const input = api.settings.update.input.parse(req.body);
       const updated = await storage.updateSettings(input);
+      audit(req, "settings.updated", { metadata: input });
       res.json(updated);
     } catch (err) {
       return zodErrorToBadRequest(res, err);
@@ -97,6 +103,16 @@ export async function registerRoutes(
         ivaAmount:     ivaAmount  as any,
         amountInWords,
       } as any);
+      audit(req, "receipt.created", {
+        targetType: "receipt",
+        targetId: created.id,
+        metadata: {
+          receiptNumber: created.receiptNumber,
+          studentName: created.studentName,
+          amountPaid: created.amountPaid,
+          paymentMethod: created.paymentMethod,
+        },
+      });
       res.status(201).json(created);
     } catch (err) {
       // Índice único: mensalidade já emitida para este aluno/mês.
@@ -123,6 +139,11 @@ export async function registerRoutes(
       const updated = await storage.updateReceipt(id, normalized);
       if (!updated)
         return res.status(404).json({ message: "Recibo não encontrado" });
+      audit(req, "receipt.updated", {
+        targetType: "receipt",
+        targetId: id,
+        metadata: { receiptNumber: updated.receiptNumber, studentName: updated.studentName, changes: updates },
+      });
       res.json(updated);
     } catch (err) {
       return zodErrorToBadRequest(res, err);
